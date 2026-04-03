@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { getStudents, getClassAverage, getTopStudents, getWeakStudents, getOverallScore, getPrediction, type Student } from "@/lib/studentStore";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { Award, AlertTriangle, TrendingUp, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import CameraGesturePanel from "@/components/CameraGesturePanel";
+import { useCameraHandGestures } from "@/hooks/useCameraHandGestures";
 
 const COLORS = {
   improving: "hsl(199, 89%, 48%)",
@@ -14,6 +16,11 @@ const COLORS = {
 
 export default function Analysis() {
   const [students, setStudents] = useState<Student[]>([]);
+  const focusSections = useMemo(
+    () => ["overview", "predictions", "top", "support"] as const,
+    [],
+  );
+  const [focusIndex, setFocusIndex] = useState(0);
 
   useEffect(() => {
     setStudents(getStudents());
@@ -48,16 +55,63 @@ export default function Analysis() {
     { name: "Declining", value: predCounts.declining },
   ].filter(d => d.value > 0);
 
+  const activeSection = focusSections[focusIndex];
+
+  const handleGesture = useCallback((gesture: { categoryName: string }) => {
+    if (gesture.categoryName === "Open_Palm") {
+      setFocusIndex(index => (index + 1) % focusSections.length);
+      return;
+    }
+
+    if (gesture.categoryName === "Closed_Fist") {
+      setFocusIndex(index => (index - 1 + focusSections.length) % focusSections.length);
+      return;
+    }
+
+    if (gesture.categoryName === "Pointing_Up") {
+      setFocusIndex(1);
+      return;
+    }
+
+    if (gesture.categoryName === "Victory") {
+      setFocusIndex(2);
+    }
+  }, [focusSections]);
+
+  const { videoRef, isActive, isLoading, error, lastGesture, stop } = useCameraHandGestures({
+    enabled: students.length > 0,
+    onGesture: handleGesture,
+  });
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <CameraGesturePanel
+        title="Analyze class trends with camera gestures"
+        description="Use open palm and closed fist to move through insight sections. Pointing up jumps to student predictions, and the victory sign jumps to top performers."
+        videoRef={videoRef}
+        isActive={isActive}
+        isLoading={isLoading}
+        error={error}
+        lastGestureLabel={lastGesture?.categoryName ?? null}
+        onStop={stop}
+        gestures={[
+          { name: "Open Palm", action: "Move to the next analysis section" },
+          { name: "Closed Fist", action: "Move to the previous analysis section" },
+          { name: "Pointing Up", action: "Jump to student predictions" },
+          { name: "Victory", action: "Jump to top students" },
+        ]}
+      />
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Analysis & Predictions</h1>
-        <p className="text-muted-foreground mt-1">Detailed class performance insights</p>
+        <p className="text-muted-foreground mt-1">
+          Detailed class performance insights • Active focus: {activeSection}
+        </p>
       </div>
 
       {/* Class Averages Radar */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="p-6">
+        <Card className={`p-6 transition-all ${activeSection === "overview" ? "border-primary shadow-lg shadow-primary/15 ring-1 ring-primary/40" : ""}`}>
           <h2 className="text-lg font-semibold mb-4">Class Average (Radar)</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -71,7 +125,7 @@ export default function Analysis() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className={`p-6 transition-all ${activeSection === "overview" ? "border-primary shadow-lg shadow-primary/15 ring-1 ring-primary/40" : ""}`}>
           <h2 className="text-lg font-semibold mb-4">Prediction Distribution</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -96,7 +150,7 @@ export default function Analysis() {
       </div>
 
       {/* Prediction List */}
-      <Card className="p-6">
+      <Card className={`p-6 transition-all ${activeSection === "predictions" ? "border-info shadow-lg shadow-info/15 ring-1 ring-info/40" : ""}`}>
         <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-info" /> Student Predictions
         </h2>
@@ -118,7 +172,7 @@ export default function Analysis() {
 
       {/* Top & Weak */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="p-6">
+        <Card className={`p-6 transition-all ${activeSection === "top" ? "border-warning shadow-lg shadow-warning/15 ring-1 ring-warning/40" : ""}`}>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Award className="w-5 h-5 text-warning" /> Top 5 Students
           </h2>
@@ -135,7 +189,7 @@ export default function Analysis() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className={`p-6 transition-all ${activeSection === "support" ? "border-destructive shadow-lg shadow-destructive/15 ring-1 ring-destructive/40" : ""}`}>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-destructive" /> Weak Students (Below 50%)
           </h2>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -118,8 +118,86 @@
   }
 }
 
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0.25s;
+  animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background-color: #0a1a2f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.icon img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+.obsidian-title {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  color: #ededed;
+  cursor: default;
+}
+
+.obsidian-title__text,
+.obsidian-title__shimmer {
+  grid-area: 1 / 1;
+  transition:
+    opacity 0.72s ease-in-out,
+    filter 0.72s ease-in-out,
+    clip-path 0.72s ease-in-out,
+    transform 0.72s ease-in-out;
+  will-change: opacity, filter, clip-path, transform;
+}
+
+.obsidian-title__text {
+  color: #ededed;
+  opacity: 1;
+  filter: blur(0);
+  clip-path: inset(0 0 0 0);
+}
+
+.obsidian-title__shimmer {
+  color: transparent;
+  opacity: 0;
+  filter: blur(0);
+  clip-path: inset(0 100% 0 0);
+  mix-blend-mode: lighten;
+  background: linear-gradient(90deg, transparent 0%, rgba(192, 160, 98, 0.12) 35%, rgba(192, 160, 98, 0.95) 50%, rgba(192, 160, 98, 0.18) 65%, transparent 100%);
+  background-size: 220% 100%;
+  background-position: 100% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.obsidian-title:hover .obsidian-title__text,
+.obsidian-title:focus-visible .obsidian-title__text {
+  opacity: 0;
+  filter: blur(3px);
+  clip-path: inset(0 0 0 100%);
+}
+
+.obsidian-title:hover .obsidian-title__shimmer,
+.obsidian-title:focus-visible .obsidian-title__shimmer {
+  opacity: 1;
+  filter: blur(1px);
+  clip-path: inset(0 0 0 0);
+  background-position: 0% 50%;
 }
 
 /* Gradient utilities */

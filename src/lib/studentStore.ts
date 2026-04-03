@@ -11,6 +11,14 @@ export type Prediction = 'improving' | 'stable' | 'declining';
 
 const STORAGE_KEY = 'datavista_students';
 
+function createStudentId() {
+  if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `student-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function getStudents(): Student[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -28,7 +36,7 @@ export function addStudent(student: Omit<Student, 'id' | 'addedAt'>): Student {
   const students = getStudents();
   const newStudent: Student = {
     ...student,
-    id: crypto.randomUUID(),
+    id: createStudentId(),
     addedAt: new Date().toISOString(),
   };
   students.push(newStudent);

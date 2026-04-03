@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Users, TrendingUp, TrendingDown, Award, UserPlus, ArrowRight, Sparkles, Target } from "lucide-react";
 import { getStudents, getClassAverage, getTopStudents, getWeakStudents, getOverallScore, getPrediction, type Student } from "@/lib/studentStore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import InteractiveDashboardHero from "@/components/InteractiveDashboardHero";
 
 const statStyles = [
   { bg: "bg-primary/10", icon: "text-primary", border: "border-primary/20" },
@@ -71,10 +72,12 @@ export default function Dashboard() {
       {/* Background */}
       <div className="fixed inset-0 -z-10 gradient-mesh opacity-40" />
 
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight gradient-text inline-block">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">{students.length} students enrolled</p>
-      </div>
+      <InteractiveDashboardHero
+        studentsCount={students.length}
+        averageScore={avg.overall}
+        improvingCount={improving.length}
+        weakCount={weak.length}
+      />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
