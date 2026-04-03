@@ -7,12 +7,47 @@ import type { Teacher } from "./LoginPage.tsx";
 import "./index.css";
 import { Toaster } from "./components/ui/sonner";
 
+const AUTH_STORAGE_KEY = "datavista_active_teacher";
+
+function loadActiveTeacher() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Teacher) : null;
+  } catch {
+    return null;
+  }
+}
+
 function Root() {
-  const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [teacher, setTeacher] = useState<Teacher | null>(() => loadActiveTeacher());
   const [pendingTeacher, setPendingTeacher] = useState<Teacher | null>(null);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (teacher) {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(teacher));
+      return;
+    }
+
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  }, [teacher]);
+
   if (!teacher && !pendingTeacher) {
-    return <LoginPage onLogin={(t) => setPendingTeacher(t)} />;
+    return (
+      <LoginPage
+        onLogin={(nextTeacher, options) => {
+          if (options?.showIntro) {
+            setPendingTeacher(nextTeacher);
+            return;
+          }
+
+          setTeacher(nextTeacher);
+        }}
+      />
+    );
   }
 
   if (pendingTeacher) {
@@ -28,7 +63,13 @@ function Root() {
 
   return (
     <>
-      <App teacher={teacher} onLogout={() => setTeacher(null)} />
+      <App
+        teacher={teacher}
+        onLogout={() => {
+          setTeacher(null);
+          setPendingTeacher(null);
+        }}
+      />
       <Toaster richColors position="top-right" />
     </>
   );

@@ -5,7 +5,7 @@ import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 export type Teacher = { name: string; username: string; position: string };
 
 type TeacherAccount = Teacher & { password: string };
-type Props = { onLogin: (teacher: Teacher) => void };
+type Props = { onLogin: (teacher: Teacher, options?: { showIntro?: boolean }) => void };
 type Mode = "signin" | "signup";
 
 const STORAGE_KEY = "datavista_teacher_accounts";
@@ -33,7 +33,8 @@ function loadTeacherAccounts() {
     const saved = raw ? (JSON.parse(raw) as TeacherAccount[]) : [];
     const merged = [...DEFAULT_TEACHERS];
 
-    for (const teacher of saved) {
+    for (const teacher of Array.isArray(saved) ? saved : []) {
+      if (!teacher?.username || !teacher?.password || !teacher?.name || !teacher?.position) continue;
       if (!merged.some((item) => item.username === teacher.username)) {
         merged.push(teacher);
       }
@@ -76,7 +77,9 @@ export default function LoginPage({ onLogin }: Props) {
     e.preventDefault();
     const u = username.trim().toLowerCase();
     const p = password.trim();
-    const match = accounts.find((teacher) => teacher.username.toLowerCase() === u && teacher.password === p);
+    const latestAccounts = loadTeacherAccounts();
+    setAccounts(latestAccounts);
+    const match = latestAccounts.find((teacher) => teacher.username.toLowerCase() === u && teacher.password === p);
 
     if (!match) {
       setError("Invalid username or password.");
@@ -84,7 +87,10 @@ export default function LoginPage({ onLogin }: Props) {
     }
 
     setError("");
-    onLogin({ name: match.name, username: match.username, position: match.position });
+    onLogin(
+      { name: match.name, username: match.username, position: match.position },
+      { showIntro: false },
+    );
   }
 
   function handleSignUp(e: React.FormEvent) {
@@ -131,6 +137,10 @@ export default function LoginPage({ onLogin }: Props) {
     setPassword(nextPassword);
     setSignUp({ name: "", username: "", position: "", password: "", confirmPassword: "" });
     setMode("signin");
+    onLogin(
+      { name: newTeacher.name, username: newTeacher.username, position: newTeacher.position },
+      { showIntro: true },
+    );
   }
 
   return (
