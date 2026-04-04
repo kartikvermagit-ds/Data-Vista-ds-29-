@@ -260,12 +260,25 @@ function createSeedAssignments(totalStudents: number): AssignmentItem[] {
 }
 
 export function createSeedState(): DataVistaState {
-  const students = seedProfiles.map(createStudent);
   return {
-    students,
-    assignments: createSeedAssignments(students.length),
+    students: [],
+    assignments: [],
     settings: BASE_SETTINGS,
   };
+}
+
+function isLegacySeedState(state: DataVistaState) {
+  const legacyStudents = seedProfiles.map((profile) => profile.name).sort();
+  const currentStudents = state.students.map((student) => student.name).sort();
+  const legacyAssignmentIds = createSeedAssignments(seedProfiles.length).map((assignment) => assignment.id).sort();
+  const currentAssignmentIds = state.assignments.map((assignment) => assignment.id).sort();
+
+  return (
+    currentStudents.length === legacyStudents.length &&
+    currentStudents.every((name, index) => name === legacyStudents[index]) &&
+    currentAssignmentIds.length === legacyAssignmentIds.length &&
+    currentAssignmentIds.every((id, index) => id === legacyAssignmentIds[index])
+  );
 }
 
 function resolveTeacherStorageKey(teacher?: string | Pick<Teacher, "id" | "email" | "username">) {
@@ -291,6 +304,7 @@ export function loadState(teacher?: string | Pick<Teacher, "id" | "email" | "use
     if (!raw) return createSeedState();
     const parsed = JSON.parse(raw) as DataVistaState;
     if (!isStateShape(parsed) || !parsed.students?.length) return createSeedState();
+    if (isLegacySeedState(parsed)) return createSeedState();
     return parsed;
   } catch {
     return createSeedState();
@@ -329,6 +343,12 @@ export async function loadStateForTeacher(teacher?: Teacher): Promise<DataVistaS
   if (!isStateShape(data?.state)) {
     await saveStateForTeacher(localState, teacher);
     return localState;
+  }
+
+  if (isLegacySeedState(data.state)) {
+    const emptyState = createSeedState();
+    await saveStateForTeacher(emptyState, teacher);
+    return emptyState;
   }
 
   saveState(data.state, teacher);
