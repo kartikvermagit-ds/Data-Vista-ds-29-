@@ -1,3 +1,6 @@
+import type { Teacher } from "./auth";
+import { isSupabaseConfigured, supabase } from "./supabase";
+
 export const SUBJECTS = ["Mathematics", "Science", "English", "Social Studies", "Computer"] as const;
 export const EXAMS = ["Unit 1", "Unit 2", "Half Yearly"] as const;
 export const MONTHS = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar"] as const;
@@ -74,6 +77,7 @@ export interface DataVistaState {
 }
 
 const STORAGE_KEY = "datavista_v2_state";
+const REMOTE_STATE_TABLE = "teacher_states";
 
 const BASE_SETTINGS: ClassSettings = {
   className: "Grade 9",
@@ -264,31 +268,112 @@ export function createSeedState(): DataVistaState {
   };
 }
 
-export function loadState(username?: string): DataVistaState {
+function resolveTeacherStorageKey(teacher?: string | Pick<Teacher, "id" | "email" | "username">) {
+  if (!teacher) return STORAGE_KEY;
+  if (typeof teacher === "string") return `${STORAGE_KEY}_${teacher}`;
+  const owner = teacher.id ?? teacher.email ?? teacher.username;
+  return owner ? `${STORAGE_KEY}_${owner}` : STORAGE_KEY;
+}
+
+function isStateShape(value: unknown): value is DataVistaState {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<DataVistaState>;
+  return Array.isArray(candidate.students) && Array.isArray(candidate.assignments) && !!candidate.settings;
+}
+
+export function loadState(teacher?: string | Pick<Teacher, "id" | "email" | "username">): DataVistaState {
   if (typeof window === "undefined") {
     return createSeedState();
   }
-  const key = username ? `${STORAGE_KEY}_${username}` : STORAGE_KEY;
+  const key = resolveTeacherStorageKey(teacher);
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return createSeedState();
     const parsed = JSON.parse(raw) as DataVistaState;
-    if (!parsed.students?.length) return createSeedState();
+    if (!isStateShape(parsed) || !parsed.students?.length) return createSeedState();
     return parsed;
   } catch {
     return createSeedState();
   }
 }
 
-export function saveState(state: DataVistaState, username?: string) {
+export function saveState(state: DataVistaState, teacher?: string | Pick<Teacher, "id" | "email" | "username">) {
   if (typeof window === "undefined") return;
-  const key = username ? `${STORAGE_KEY}_${username}` : STORAGE_KEY;
+  const key = resolveTeacherStorageKey(teacher);
   window.localStorage.setItem(key, JSON.stringify(state));
 }
 
-export function resetState(username?: string) {
+export function resetState(teacher?: string | Pick<Teacher, "id" | "email" | "username">) {
   const seed = createSeedState();
-  saveState(seed, username);
+  saveState(seed, teacher);
+  return seed;
+}
+
+export async function loadStateForTeacher(teacher?: Teacher): Promise<DataVistaState> {
+  const localState = loadState(teacher);
+
+  if (!isSupabaseConfigured || !supabase || !teacher?.id) {
+    return localState;
+  }
+
+  const { data, error } = await supabase
+    .from(REMOTE_STATE_TABLE)
+    .select("state")
+    .eq("owner_id", teacher.id)
+    .maybeSingle();
+
+  if (error) {
+    return localState;
+  }
+
+  if (!isStateShape(data?.state)) {
+    await saveStateForTeacher(localState, teacher);
+    return localState;
+  }
+
+  saveState(data.state, teacher);
+  return data.state;
+}
+
+export async function saveStateForTeacher(state: DataVistaState, teacher?: Teacher) {
+  saveState(state, teacher);
+
+  if (!isSupabaseConfigured || !supabase || !teacher?.id) {
+    return;
+  }
+
+  await supabase.from(REMOTE_STATE_TABLE).upsert(
+    {
+      owner_id: teacher.id,
+      owner_email: teacher.email ?? null,
+      state,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "owner_id" },
+  );
+}
+
+export async function fetchLatestStateForTeacher(teacher?: Teacher): Promise<DataVistaState | null> {
+  if (!isSupabaseConfigured || !supabase || !teacher?.id) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from(REMOTE_STATE_TABLE)
+    .select("state")
+    .eq("owner_id", teacher.id)
+    .maybeSingle();
+
+  if (error || !isStateShape(data?.state)) {
+    return null;
+  }
+
+  return data.state;
+}
+
+export async function resetStateForTeacher(teacher?: Teacher) {
+  const seed = createSeedState();
+  await saveStateForTeacher(seed, teacher);
   return seed;
 }
 

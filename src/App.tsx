@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { EXAMS, SUBJECTS, calculateClassHealth, createAssignmentFromForm, createStudentFromForm, exportBackupJson, exportStudentsCsv, getGradeFromScore, getOverallScore, loadState, markTodayForStudent, resetState, saveState, summarizeAttendance, type AttendanceStatus, type ClassSettings, type DataVistaState, type ExamName, type Student, type Subject } from "@/lib/datavista";
+import { EXAMS, SUBJECTS, calculateClassHealth, createAssignmentFromForm, createStudentFromForm, exportBackupJson, exportStudentsCsv, fetchLatestStateForTeacher, getGradeFromScore, getOverallScore, loadState, loadStateForTeacher, markTodayForStudent, resetStateForTeacher, saveStateForTeacher, summarizeAttendance, type AttendanceStatus, type ClassSettings, type DataVistaState, type ExamName, type Student, type Subject } from "@/lib/datavista";
 
 type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "settings";
 type RiskFilter = "All" | "Low" | "Medium" | "High";
@@ -36,7 +36,8 @@ const emptyAssignmentForm: AddAssignmentForm = { title: "", subject: "Mathematic
 const tooltipStyle = { background: "rgba(14,12,10,.96)", border: "1px solid rgba(192,160,98,.18)", borderRadius: "16px", color: "#f3e7c2" };
 
 export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout: () => void }) {
-  const [state, setState] = useState<DataVistaState>(() => loadState(teacher.username));
+  const [state, setState] = useState<DataVistaState>(() => loadState(teacher));
+  const [stateReady, setStateReady] = useState(false);
   const [active, setActive] = useState<PageId>("dashboard"); const [jumping, setJumping] = useState(false); const [vibgyorIndex, setVibgyorIndex] = useState(0);
   const [selectedId, setSelectedId] = useState(state.students[0]?.id ?? "");
   const [search, setSearch] = useState("");
@@ -52,9 +53,65 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => { document.documentElement.classList.add("dark"); document.documentElement.style.colorScheme = "dark"; }, []);
-  useEffect(() => { saveState(state, teacher.username); }, [state, teacher.username]);
+  useEffect(() => {
+    let cancelled = false;
+
+    setStateReady(false);
+    void loadStateForTeacher(teacher).then((nextState) => {
+      if (cancelled) return;
+      setState(nextState);
+      setSelectedId((current) => (nextState.students.some((student) => student.id === current) ? current : nextState.students[0]?.id ?? ""));
+      setStateReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teacher]);
+  useEffect(() => {
+    if (!stateReady) return;
+    void saveStateForTeacher(state, teacher);
+  }, [state, stateReady, teacher]);
   useEffect(() => { setSettingsDraft(state.settings); }, [state.settings]);
   useEffect(() => { if (!state.students.some((s) => s.id === selectedId)) setSelectedId(state.students[0]?.id ?? ""); }, [selectedId, state.students]);
+  useEffect(() => {
+    if (!stateReady || !teacher.id) return;
+
+    let cancelled = false;
+    const syncLatest = async () => {
+      const latest = await fetchLatestStateForTeacher(teacher);
+      if (!latest || cancelled) return;
+      const currentSerialized = JSON.stringify(state);
+      const latestSerialized = JSON.stringify(latest);
+      if (currentSerialized !== latestSerialized) {
+        setState(latest);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void syncLatest();
+    }, 10000);
+
+    const onFocus = () => {
+      void syncLatest();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void syncLatest();
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [state, stateReady, teacher]);
 
   const selected = state.students.find((s) => s.id === selectedId) ?? state.students[0] ?? null;
   const filtered = useMemo(() => state.students.filter((s) => (s.name.toLowerCase().includes(deferredSearch.toLowerCase()) || s.rollNo.includes(deferredSearch)) && (risk === "All" || s.riskLevel === risk)), [deferredSearch, risk, state.students]);
@@ -86,7 +143,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
   function exportBackup() { download("datavista-backup.json", exportBackupJson(state), "application/json;charset=utf-8"); toast.success("Backup file downloaded."); }
   function markToday() { if (!selected) return; setState((c) => ({ ...c, students: c.students.map((s) => s.id === selected.id ? markTodayForStudent(s) : s) })); toast.success(`Today's attendance was updated for ${selected.name}.`); }
   function saveSettings() { setState((c) => ({ ...c, settings: settingsDraft })); toast.success("Settings saved."); }
-  function resetDemo() { const next = resetState(teacher.username); setState(next); setSelectedId(next.students[0]?.id ?? ""); toast.info("Local state refreshed from the saved snapshot."); }
+  function resetDemo() { void resetStateForTeacher(teacher).then((next) => { setState(next); setSelectedId(next.students[0]?.id ?? ""); toast.info("Class data refreshed from the default snapshot."); }); }
   function notifyParent() { if (!selected) return; toast.success(`Parent notification queued for ${selected.guardianName}.`); }
   function deleteStudent() { if (!selected) return; const name = selected.name; setState((c) => ({ ...c, students: c.students.filter((s) => s.id !== selected.id) })); setDetailOpen(false); toast.success(`${name} deleted.`); } function generateReport() { if (!selected) return; download(`${selected.name.replace(/\s+/g, "-").toLowerCase()}-report.txt`, [`${selected.name} (${selected.rollNo})`, `Overall: ${getOverallScore(selected)}`, `Attendance: ${selected.attendanceRate}%`, `Marks: ${selected.marksAverage}%`, `Assignments: ${selected.assignmentCompletion}%`, `Prediction: ${selected.predictedGrade} (${selected.trend})`].join("\n"), "text/plain;charset=utf-8"); toast.success("Student report generated."); }
   function openStudent(s: Student) { setSelectedId(s.id); setDetailOpen(true); }

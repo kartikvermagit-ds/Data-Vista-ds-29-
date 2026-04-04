@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 
 export type Teacher = {
+  id?: string;
   name: string;
   username: string;
   position: string;
@@ -12,6 +13,7 @@ export function teacherFromAuthUser(user: User): Teacher {
   const fallbackEmail = user.email ?? "";
 
   return {
+    id: user.id,
     name: String(metadata.name ?? metadata.full_name ?? fallbackEmail.split("@")[0] ?? "Teacher"),
     username: String(metadata.username ?? fallbackEmail.split("@")[0] ?? "teacher"),
     position: String(metadata.position ?? "Teacher"),
