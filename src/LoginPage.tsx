@@ -103,7 +103,7 @@ export default function LoginPage({ onLogin }: Props) {
         return;
       }
 
-      onLogin(teacherFromAuthUser(data.user), { showIntro: false });
+      onLogin(teacherFromAuthUser(data.user), { showIntro: true });
       setSubmitting(false);
       return;
     }
@@ -121,7 +121,7 @@ export default function LoginPage({ onLogin }: Props) {
 
     onLogin(
       { name: match.name, username: match.username, position: match.position },
-      { showIntro: false },
+      { showIntro: true },
     );
     setSubmitting(false);
   }

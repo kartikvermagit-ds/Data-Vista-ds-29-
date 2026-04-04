@@ -126,21 +126,24 @@ function SignupIntroScreen({ onComplete }: { onComplete: () => void }) {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950">
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-950">
       <video
         ref={videoRef}
-        className="h-screen w-screen object-cover"
+        className="absolute inset-0 h-full w-full object-cover"
         src="/signup-intro.mp4"
         autoPlay
         muted={isMuted}
         playsInline
+        preload="auto"
+        poster="/logo.png"
         onEnded={onComplete}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-slate-950/30" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/10 to-slate-950/35" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950 to-transparent" />
       <button
         type="button"
         onClick={handleToggleMute}
-        className="absolute bottom-8 left-8 flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/75 px-5 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white backdrop-blur transition-all duration-300 ease-in-out hover:bg-slate-900"
+        className="absolute bottom-6 left-4 flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/75 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white backdrop-blur transition-all duration-300 ease-in-out hover:bg-slate-900 sm:bottom-8 sm:left-8 sm:px-5 sm:text-sm"
       >
         {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
         {isMuted ? "Unmute" : "Mute"}
@@ -148,7 +151,7 @@ function SignupIntroScreen({ onComplete }: { onComplete: () => void }) {
       <button
         type="button"
         onClick={onComplete}
-        className="absolute bottom-8 right-8 rounded-full border border-white/15 bg-slate-950/75 px-5 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white backdrop-blur transition hover:bg-slate-900"
+        className="absolute bottom-6 right-4 rounded-full border border-white/15 bg-slate-950/75 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white backdrop-blur transition hover:bg-slate-900 sm:bottom-8 sm:right-8 sm:px-5 sm:text-sm"
       >
         Skip
       </button>
