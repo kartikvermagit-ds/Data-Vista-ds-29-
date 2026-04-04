@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import App from "./App.tsx";
 import LoginPage from "./LoginPage.tsx";
-import type { Teacher } from "./LoginPage.tsx";
+import type { Teacher } from "./lib/auth";
+import { teacherFromAuthUser } from "./lib/auth";
+import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import "./index.css";
 import { Toaster } from "./components/ui/sonner";
 
@@ -21,10 +23,30 @@ function loadActiveTeacher() {
 }
 
 function Root() {
-  const [teacher, setTeacher] = useState<Teacher | null>(() => loadActiveTeacher());
+  const [teacher, setTeacher] = useState<Teacher | null>(() => (isSupabaseConfigured ? null : loadActiveTeacher()));
   const [pendingTeacher, setPendingTeacher] = useState<Teacher | null>(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
 
   useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.getSession().then(({ data }) => {
+        setTeacher(data.session?.user ? teacherFromAuthUser(data.session.user) : null);
+        setAuthReady(true);
+      });
+
+      const { data } = supabase.auth.onAuthStateChange((_, session) => {
+        setTeacher(session?.user ? teacherFromAuthUser(session.user) : null);
+        setAuthReady(true);
+      });
+
+      return () => {
+        data.subscription.unsubscribe();
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isSupabaseConfigured) return;
     if (typeof window === "undefined") return;
 
     if (teacher) {
@@ -34,6 +56,10 @@ function Root() {
 
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
   }, [teacher]);
+
+  if (!authReady) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm uppercase tracking-[0.3em] text-slate-300">Loading Session</div>;
+  }
 
   if (!teacher && !pendingTeacher) {
     return (
@@ -66,6 +92,9 @@ function Root() {
       <App
         teacher={teacher}
         onLogout={() => {
+          if (isSupabaseConfigured && supabase) {
+            void supabase.auth.signOut();
+          }
           setTeacher(null);
           setPendingTeacher(null);
         }}

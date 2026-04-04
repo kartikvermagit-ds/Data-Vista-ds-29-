@@ -1,4 +1,4 @@
-import type { Teacher } from "./LoginPage"; import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";

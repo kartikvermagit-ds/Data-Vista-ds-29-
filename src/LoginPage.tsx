@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
-
-export type Teacher = { name: string; username: string; position: string };
+import type { Teacher } from "./lib/auth";
+import { teacherFromAuthUser } from "./lib/auth";
+import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
 type TeacherAccount = Teacher & { password: string };
 type Props = { onLogin: (teacher: Teacher, options?: { showIntro?: boolean }) => void };
@@ -57,10 +58,13 @@ export default function LoginPage({ onLogin }: Props) {
   const [accounts, setAccounts] = useState<TeacherAccount[]>(() => loadTeacherAccounts());
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [signUp, setSignUp] = useState({
     name: "",
+    email: "",
     username: "",
     position: "",
     password: "",
@@ -73,52 +77,137 @@ export default function LoginPage({ onLogin }: Props) {
     setShowPass(false);
   }
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const u = username.trim().toLowerCase();
     const p = password.trim();
+    setSubmitting(true);
+    setError("");
+
+    if (isSupabaseConfigured && supabase) {
+      const nextEmail = email.trim().toLowerCase();
+
+      if (!nextEmail || !p) {
+        setError("Email and password are required.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: nextEmail,
+        password: p,
+      });
+
+      if (signInError || !data.user) {
+        setError(signInError?.message ?? "Unable to sign in.");
+        setSubmitting(false);
+        return;
+      }
+
+      onLogin(teacherFromAuthUser(data.user), { showIntro: false });
+      setSubmitting(false);
+      return;
+    }
+
+    const u = username.trim().toLowerCase();
     const latestAccounts = loadTeacherAccounts();
     setAccounts(latestAccounts);
     const match = latestAccounts.find((teacher) => teacher.username.toLowerCase() === u && teacher.password === p);
 
     if (!match) {
       setError("Invalid username or password.");
+      setSubmitting(false);
       return;
     }
 
-    setError("");
     onLogin(
       { name: match.name, username: match.username, position: match.position },
       { showIntro: false },
     );
+    setSubmitting(false);
   }
 
-  function handleSignUp(e: React.FormEvent) {
+  async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
 
     const nextName = signUp.name.trim();
+    const nextEmail = signUp.email.trim().toLowerCase();
     const nextUsername = signUp.username.trim().toLowerCase();
     const nextPosition = signUp.position.trim();
     const nextPassword = signUp.password.trim();
     const confirmPassword = signUp.confirmPassword.trim();
+    setSubmitting(true);
+    setError("");
 
-    if (!nextName || !nextUsername || !nextPosition || !nextPassword || !confirmPassword) {
+    if (!nextName || !nextUsername || !nextPosition || !nextPassword || !confirmPassword || (isSupabaseConfigured && !nextEmail)) {
       setError("All sign up fields are required.");
+      setSubmitting(false);
       return;
     }
 
     if (nextPassword.length < 6) {
       setError("Password must be at least 6 characters.");
+      setSubmitting(false);
       return;
     }
 
     if (nextPassword !== confirmPassword) {
       setError("Passwords do not match.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (isSupabaseConfigured && !/^\S+@\S+\.\S+$/.test(nextEmail)) {
+      setError("Enter a valid email address.");
+      setSubmitting(false);
       return;
     }
 
     if (accounts.some((teacher) => teacher.username.toLowerCase() === nextUsername)) {
       setError("That username is already in use.");
+      setSubmitting(false);
+      return;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: nextEmail,
+        password: nextPassword,
+        options: {
+          data: {
+            name: nextName,
+            username: nextUsername,
+            position: nextPosition,
+          },
+        },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      const teacher = signUpData.user ? teacherFromAuthUser(signUpData.user) : { name: nextName, username: nextUsername, position: nextPosition, email: nextEmail };
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: nextEmail,
+        password: nextPassword,
+      });
+
+      if (signInError || !signInData.user) {
+        setError("Account created. If email confirmation is enabled, please verify your email before signing in.");
+        setMode("signin");
+        setEmail(nextEmail);
+        setPassword("");
+        setSignUp({ name: "", email: "", username: "", position: "", password: "", confirmPassword: "" });
+        setSubmitting(false);
+        return;
+      }
+
+      setEmail(nextEmail);
+      setPassword(nextPassword);
+      setSignUp({ name: "", email: "", username: "", position: "", password: "", confirmPassword: "" });
+      onLogin(teacher, { showIntro: true });
+      setSubmitting(false);
       return;
     }
 
@@ -132,15 +221,15 @@ export default function LoginPage({ onLogin }: Props) {
     const nextAccounts = [...accounts, newTeacher];
     setAccounts(nextAccounts);
     saveTeacherAccounts(nextAccounts);
-    setError("");
     setUsername(nextUsername);
     setPassword(nextPassword);
-    setSignUp({ name: "", username: "", position: "", password: "", confirmPassword: "" });
+    setSignUp({ name: "", email: "", username: "", position: "", password: "", confirmPassword: "" });
     setMode("signin");
     onLogin(
       { name: newTeacher.name, username: newTeacher.username, position: newTeacher.position },
       { showIntro: true },
     );
+    setSubmitting(false);
   }
 
   return (
@@ -205,15 +294,27 @@ export default function LoginPage({ onLogin }: Props) {
 
           {mode === "signin" ? (
             <form onSubmit={handleLogin} className="space-y-5">
-              <AuthField label="Username">
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  className={inputClass}
-                />
-              </AuthField>
+              {isSupabaseConfigured ? (
+                <AuthField label="Email">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter email"
+                    className={inputClass}
+                  />
+                </AuthField>
+              ) : (
+                <AuthField label="Username">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter username"
+                    className={inputClass}
+                  />
+                </AuthField>
+              )}
 
               <AuthField label="Password">
                 <div className="relative">
@@ -246,10 +347,11 @@ export default function LoginPage({ onLogin }: Props) {
                 whileTap={{ scale: 0.97 }}
                 type="submit"
                 transition={{ duration: 0.3, ease: "easeInOut" }}
+                disabled={submitting}
                 className={actionButtonClass}
               >
                 <LogIn className="h-4 w-4" strokeWidth={1.8} />
-                Sign In
+                {submitting ? "Please Wait" : "Sign In"}
               </motion.button>
             </form>
           ) : (
@@ -265,6 +367,18 @@ export default function LoginPage({ onLogin }: Props) {
               </AuthField>
 
               <div className="grid gap-5 md:grid-cols-2">
+                {isSupabaseConfigured ? (
+                  <AuthField label="Email">
+                    <input
+                      type="email"
+                      value={signUp.email}
+                      onChange={(e) => setSignUp((current) => ({ ...current, email: e.target.value }))}
+                      placeholder="Enter email"
+                      className={inputClass}
+                    />
+                  </AuthField>
+                ) : null}
+
                 <AuthField label="Username">
                   <input
                     type="text"
@@ -319,10 +433,11 @@ export default function LoginPage({ onLogin }: Props) {
                 whileTap={{ scale: 0.97 }}
                 type="submit"
                 transition={{ duration: 0.3, ease: "easeInOut" }}
+                disabled={submitting}
                 className={actionButtonClass}
               >
                 <UserPlus className="h-4 w-4" strokeWidth={1.8} />
-                Create Account
+                {submitting ? "Please Wait" : "Create Account"}
               </motion.button>
             </form>
           )}
