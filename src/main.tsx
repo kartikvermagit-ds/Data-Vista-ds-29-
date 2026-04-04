@@ -143,7 +143,6 @@ function SignupIntroScreen({ onComplete }: { onComplete: () => void }) {
         muted={isMuted}
         playsInline
         preload="auto"
-        poster="/logo.png"
         onEnded={onComplete}
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/10 to-slate-950/35" />
