@@ -18,13 +18,13 @@ const DEFAULT_TEACHERS: TeacherAccount[] = [
 ];
 
 const inputClass =
-  "h-12 w-full rounded-lg border border-[#222222] bg-[#111111]/90 px-4 text-sm text-[#EDEDED] placeholder:text-[#555555] outline-none transition-[border-color,box-shadow] [transition-duration:250ms] ease-in-out hover:border-[#333333] focus:border-[#C0A062] focus:shadow-[0_0_0_1px_rgba(192,160,98,0.42),0_0_16px_rgba(192,160,98,0.12)]";
+  "h-12 w-full rounded-lg border border-[#222222] bg-[#111111]/90 px-4 text-sm text-[#EDEDED] placeholder:text-[#555555] caret-[#C0A062] outline-none transition-[border-color,box-shadow,background-color,color] [transition-duration:250ms] ease-in-out hover:border-[#C0A062] hover:bg-[#15120B] hover:shadow-[0_0_0_1px_rgba(192,160,98,0.28),0_0_18px_rgba(192,160,98,0.1)] focus:border-[#C0A062] focus:bg-[#15120B] focus:shadow-[0_0_0_1px_rgba(192,160,98,0.42),0_0_16px_rgba(192,160,98,0.12)]";
 
 const actionButtonClass =
   "mt-2 flex h-12 w-full transform-gpu items-center justify-center gap-2 rounded-lg bg-[#EDEDED] text-[11px] font-semibold uppercase tracking-[0.3em] text-black shadow-[0_0_0_rgba(192,160,98,0)] transition-all duration-300 ease-in-out hover:scale-[1.03] hover:bg-[#C0A062] hover:shadow-[0_0_12px_rgba(192,160,98,0.4)]";
 
 const modeButtonClass =
-  "rounded-lg px-4 py-3 text-[11px] font-medium uppercase tracking-[0.28em] transition-all duration-300 ease-in-out";
+  "rounded-lg px-4 py-3 text-[11px] font-medium uppercase tracking-[0.28em] transition-all duration-300 ease-in-out hover:text-[#C0A062]";
 
 function loadTeacherAccounts() {
   if (typeof window === "undefined") return DEFAULT_TEACHERS;
@@ -264,7 +264,8 @@ export default function LoginPage({ onLogin }: Props) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12, duration: 0.45 }}
-              className="obsidian-title font-['Playfair_Display'] text-[2rem] font-semibold uppercase tracking-[0.42em] sm:text-[2.2rem]"
+              className="obsidian-title cursor-pointer font-['Playfair_Display'] text-[2rem] font-semibold uppercase tracking-[0.42em] transition-all duration-300 hover:scale-[1.02] hover:text-[#E7D19A] sm:text-[2.2rem]"
+              style={{ textShadow: "0 0 18px rgba(192,160,98,0.18)" }}
             >
               <span className="obsidian-title__text">DATA VISTA</span>
               <span aria-hidden="true" className="obsidian-title__shimmer">
