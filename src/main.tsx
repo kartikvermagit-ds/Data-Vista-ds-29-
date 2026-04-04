@@ -137,7 +137,7 @@ function SignupIntroScreen({ onComplete }: { onComplete: () => void }) {
     <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-950">
       <video
         ref={videoRef}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full bg-black object-contain sm:object-cover"
         src="/signup-intro.mp4"
         autoPlay
         muted={isMuted}
