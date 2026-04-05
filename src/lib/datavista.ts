@@ -80,11 +80,11 @@ const STORAGE_KEY = "datavista_v2_state";
 const REMOTE_STATE_TABLE = "teacher_states";
 
 const BASE_SETTINGS: ClassSettings = {
-  className: "Grade 9",
-  section: "A",
-  classTeacher: "Ananya Sen",
-  term: "2026 Term 2",
-  schoolName: "DataVista Public School",
+  className: "B.Tech",
+  section: "CSE",
+  classTeacher: "Faculty Advisor",
+  term: "Semester 4",
+  schoolName: "Data Vista",
   atRiskThreshold: 60,
   attendanceThreshold: 75,
   marksThreshold: 55,
