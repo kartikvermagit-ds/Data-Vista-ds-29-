@@ -56,25 +56,28 @@ function saveTeacherAccounts(accounts: TeacherAccount[]) {
 export default function LoginPage({ onLogin }: Props) {
   const [mode, setMode] = useState<Mode>("signin");
   const [accounts, setAccounts] = useState<TeacherAccount[]>(() => loadTeacherAccounts());
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [email, setEmail] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [signUp, setSignUp] = useState({
     name: "",
-    email: "",
-    username: "",
+    phone: "",
     position: "",
     password: "",
     confirmPassword: "",
+    otp: "",
   });
 
   function switchMode(nextMode: Mode) {
     setMode(nextMode);
     setError("");
+    setStatus("");
     setShowPass(false);
+    setOtpSent(false);
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -84,18 +87,17 @@ export default function LoginPage({ onLogin }: Props) {
     setError("");
 
     if (isSupabaseConfigured && supabase) {
-      const nextEmail = email.trim().toLowerCase();
+      const nextIdentifier = identifier.trim();
 
-      if (!nextEmail || !p) {
-        setError("Email and password are required.");
+      if (!nextIdentifier || !p) {
+        setError("Email or phone and password are required.");
         setSubmitting(false);
         return;
       }
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: nextEmail,
-        password: p,
-      });
+      const nextPhone = normalizePhone(nextIdentifier);
+      const credentials = nextPhone ? { phone: nextPhone, password: p } : { email: nextIdentifier.toLowerCase(), password: p };
+      const { data, error: signInError } = await supabase.auth.signInWithPassword(credentials);
 
       if (signInError || !data.user) {
         setError(signInError?.message ?? "Unable to sign in.");
@@ -108,13 +110,13 @@ export default function LoginPage({ onLogin }: Props) {
       return;
     }
 
-    const u = username.trim().toLowerCase();
+    const u = identifier.trim().toLowerCase();
     const latestAccounts = loadTeacherAccounts();
     setAccounts(latestAccounts);
-    const match = latestAccounts.find((teacher) => teacher.username.toLowerCase() === u && teacher.password === p);
+    const match = latestAccounts.find((teacher) => (teacher.username.toLowerCase() === u || teacher.email?.toLowerCase() === u) && teacher.password === p);
 
     if (!match) {
-      setError("Invalid username or password.");
+      setError("Invalid credentials.");
       setSubmitting(false);
       return;
     }
@@ -130,15 +132,16 @@ export default function LoginPage({ onLogin }: Props) {
     e.preventDefault();
 
     const nextName = signUp.name.trim();
-    const nextEmail = signUp.email.trim().toLowerCase();
-    const nextUsername = signUp.username.trim().toLowerCase();
+    const nextPhone = normalizePhone(signUp.phone);
     const nextPosition = signUp.position.trim();
     const nextPassword = signUp.password.trim();
     const confirmPassword = signUp.confirmPassword.trim();
+    const otp = signUp.otp.trim();
     setSubmitting(true);
     setError("");
+    setStatus("");
 
-    if (!nextName || !nextUsername || !nextPosition || !nextPassword || !confirmPassword || (isSupabaseConfigured && !nextEmail)) {
+    if (!nextName || !nextPosition || !nextPassword || !confirmPassword || !nextPhone) {
       setError("All sign up fields are required.");
       setSubmitting(false);
       return;
@@ -156,74 +159,87 @@ export default function LoginPage({ onLogin }: Props) {
       return;
     }
 
-    if (isSupabaseConfigured && !/^\S+@\S+\.\S+$/.test(nextEmail)) {
-      setError("Enter a valid email address.");
-      setSubmitting(false);
-      return;
-    }
-
-    if (accounts.some((teacher) => teacher.username.toLowerCase() === nextUsername)) {
-      setError("That username is already in use.");
+    if (!nextPhone) {
+      setError("Enter a valid phone number.");
       setSubmitting(false);
       return;
     }
 
     if (isSupabaseConfigured && supabase) {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: nextEmail,
-        password: nextPassword,
-        options: {
-          data: {
-            name: nextName,
-            username: nextUsername,
-            position: nextPosition,
+      if (!otpSent) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          phone: nextPhone,
+          password: nextPassword,
+          options: {
+            channel: "sms",
+            data: {
+              name: nextName,
+              username: nextPhone,
+              position: nextPosition,
+            },
           },
-        },
-      });
+        });
 
-      if (signUpError) {
-        setError(signUpError.message);
+        if (signUpError) {
+          setError(signUpError.message);
+          setSubmitting(false);
+          return;
+        }
+
+        if (signUpData.user && signUpData.session) {
+          setSignUp({ name: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
+          onLogin(teacherFromAuthUser(signUpData.user), { showIntro: true });
+          setSubmitting(false);
+          return;
+        }
+
+        setOtpSent(true);
+        setStatus(`Verification code sent to ${nextPhone}. Enter the 6-digit OTP to finish sign up.`);
         setSubmitting(false);
         return;
       }
 
-      const teacher = signUpData.user ? teacherFromAuthUser(signUpData.user) : { name: nextName, username: nextUsername, position: nextPosition, email: nextEmail };
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: nextEmail,
-        password: nextPassword,
-      });
-
-      if (signInError || !signInData.user) {
-        setError("Account created. If email confirmation is enabled, please verify your email before signing in.");
-        setMode("signin");
-        setEmail(nextEmail);
-        setPassword("");
-        setSignUp({ name: "", email: "", username: "", position: "", password: "", confirmPassword: "" });
+      if (!otp || otp.length !== 6) {
+        setError("Enter the 6-digit OTP.");
         setSubmitting(false);
         return;
       }
 
-      setEmail(nextEmail);
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        phone: nextPhone,
+        token: otp,
+        type: "sms",
+      });
+
+      if (verifyError || !verifyData.user) {
+        setError(verifyError?.message ?? "Unable to verify phone number.");
+        setSubmitting(false);
+        return;
+      }
+
+      setIdentifier(nextPhone);
       setPassword(nextPassword);
-      setSignUp({ name: "", email: "", username: "", position: "", password: "", confirmPassword: "" });
-      onLogin(teacher, { showIntro: true });
+      setSignUp({ name: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
+      setOtpSent(false);
+      onLogin(teacherFromAuthUser(verifyData.user), { showIntro: true });
       setSubmitting(false);
       return;
     }
 
     const newTeacher: TeacherAccount = {
       name: nextName,
-      username: nextUsername,
+      username: nextPhone,
       position: nextPosition,
+      email: nextPhone,
       password: nextPassword,
     };
 
     const nextAccounts = [...accounts, newTeacher];
     setAccounts(nextAccounts);
     saveTeacherAccounts(nextAccounts);
-    setUsername(nextUsername);
+    setIdentifier(nextPhone);
     setPassword(nextPassword);
-    setSignUp({ name: "", email: "", username: "", position: "", password: "", confirmPassword: "" });
+    setSignUp({ name: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
     setMode("signin");
     onLogin(
       { name: newTeacher.name, username: newTeacher.username, position: newTeacher.position },
@@ -296,22 +312,22 @@ export default function LoginPage({ onLogin }: Props) {
           {mode === "signin" ? (
             <form onSubmit={handleLogin} className="space-y-5">
               {isSupabaseConfigured ? (
-                <AuthField label="Email">
+                <AuthField label="Email or Phone">
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email"
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="Enter email or +91 phone"
                     className={inputClass}
                   />
                 </AuthField>
               ) : (
-                <AuthField label="Username">
+                <AuthField label="Username or Phone">
                   <input
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter username"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="Enter username or phone"
                     className={inputClass}
                   />
                 </AuthField>
@@ -343,6 +359,12 @@ export default function LoginPage({ onLogin }: Props) {
                 </motion.p>
               ) : null}
 
+              {status ? (
+                <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-center text-sm text-[#9bbf9a]">
+                  {status}
+                </motion.p>
+              ) : null}
+
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
@@ -368,24 +390,12 @@ export default function LoginPage({ onLogin }: Props) {
               </AuthField>
 
               <div className="grid gap-5 md:grid-cols-2">
-                {isSupabaseConfigured ? (
-                  <AuthField label="Email">
-                    <input
-                      type="email"
-                      value={signUp.email}
-                      onChange={(e) => setSignUp((current) => ({ ...current, email: e.target.value }))}
-                      placeholder="Enter email"
-                      className={inputClass}
-                    />
-                  </AuthField>
-                ) : null}
-
-                <AuthField label="Username">
+                <AuthField label="Phone Number">
                   <input
-                    type="text"
-                    value={signUp.username}
-                    onChange={(e) => setSignUp((current) => ({ ...current, username: e.target.value }))}
-                    placeholder="Choose username"
+                    type="tel"
+                    value={signUp.phone}
+                    onChange={(e) => setSignUp((current) => ({ ...current, phone: e.target.value }))}
+                    placeholder="Enter +91 phone number"
                     className={inputClass}
                   />
                 </AuthField>
@@ -423,9 +433,46 @@ export default function LoginPage({ onLogin }: Props) {
                 </AuthField>
               </div>
 
+              {otpSent ? (
+                <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
+                  <AuthField label="Phone OTP">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={signUp.otp}
+                      onChange={(e) => setSignUp((current) => ({ ...current, otp: e.target.value.replace(/\D/g, "").slice(0, 6) }))}
+                      placeholder="Enter 6-digit OTP"
+                      className={inputClass}
+                    />
+                  </AuthField>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    disabled={submitting}
+                    onClick={() => {
+                      setOtpSent(false);
+                      setStatus("");
+                      setSignUp((current) => ({ ...current, otp: "" }));
+                    }}
+                    className="h-12 rounded-lg border border-white/10 px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#EDEDED]/80 transition-colors hover:bg-white/[0.04]"
+                  >
+                    Resend OTP
+                  </motion.button>
+                </div>
+              ) : null}
+
               {error ? (
                 <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-center text-sm text-[#d08c8c]">
                   {error}
+                </motion.p>
+              ) : null}
+
+              {status ? (
+                <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-center text-sm text-[#9bbf9a]">
+                  {status}
                 </motion.p>
               ) : null}
 
@@ -438,7 +485,7 @@ export default function LoginPage({ onLogin }: Props) {
                 className={actionButtonClass}
               >
                 <UserPlus className="h-4 w-4" strokeWidth={1.8} />
-                {submitting ? "Please Wait" : "Create Account"}
+                {submitting ? "Please Wait" : otpSent ? "Verify Phone" : "Create Account"}
               </motion.button>
             </form>
           )}
@@ -446,6 +493,26 @@ export default function LoginPage({ onLogin }: Props) {
       </motion.div>
     </div>
   );
+}
+
+function normalizePhone(value: string) {
+  const compact = value.replace(/[^\d+]/g, "");
+
+  if (/^\+\d{10,15}$/.test(compact)) {
+    return compact;
+  }
+
+  const digits = compact.replace(/\D/g, "");
+
+  if (/^\d{10}$/.test(digits)) {
+    return `+91${digits}`;
+  }
+
+  if (/^91\d{10}$/.test(digits)) {
+    return `+${digits}`;
+  }
+
+  return "";
 }
 
 function AuthField({ label, children }: { label: string; children: React.ReactNode }) {
