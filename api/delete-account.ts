@@ -4,8 +4,8 @@ type DeleteRequest = {
   accessToken?: string;
 };
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL ?? "";
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const supabaseUrl = (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "").trim();
+const supabaseServiceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -18,7 +18,15 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const body = (typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {}) as DeleteRequest;
+  let body: DeleteRequest = {};
+
+  try {
+    body = (typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {}) as DeleteRequest;
+  } catch {
+    res.status(400).json({ error: "Invalid JSON body." });
+    return;
+  }
+
   const accessToken = body.accessToken?.trim();
 
   if (!accessToken) {
@@ -40,7 +48,12 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  await adminClient.from("teacher_states").delete().eq("owner_id", user.id);
+  const { error: stateDeleteError } = await adminClient.from("teacher_states").delete().eq("owner_id", user.id);
+
+  if (stateDeleteError) {
+    res.status(500).json({ error: stateDeleteError.message });
+    return;
+  }
 
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
 
