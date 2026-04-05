@@ -65,6 +65,7 @@ export default function LoginPage({ onLogin }: Props) {
   const [otpSent, setOtpSent] = useState(false);
   const [signUp, setSignUp] = useState({
     name: "",
+    email: "",
     phone: "",
     position: "",
     password: "",
@@ -132,6 +133,7 @@ export default function LoginPage({ onLogin }: Props) {
     e.preventDefault();
 
     const nextName = signUp.name.trim();
+    const nextEmail = signUp.email.trim().toLowerCase();
     const nextPhone = normalizePhone(signUp.phone);
     const nextPosition = signUp.position.trim();
     const nextPassword = signUp.password.trim();
@@ -141,7 +143,7 @@ export default function LoginPage({ onLogin }: Props) {
     setError("");
     setStatus("");
 
-    if (!nextName || !nextPosition || !nextPassword || !confirmPassword || !nextPhone) {
+    if (!nextName || !nextPosition || !nextPassword || !confirmPassword || !nextPhone || (isSupabaseConfigured && !nextEmail)) {
       setError("All sign up fields are required.");
       setSubmitting(false);
       return;
@@ -159,6 +161,12 @@ export default function LoginPage({ onLogin }: Props) {
       return;
     }
 
+    if (isSupabaseConfigured && !/^\S+@\S+\.\S+$/.test(nextEmail)) {
+      setError("Enter a valid email address.");
+      setSubmitting(false);
+      return;
+    }
+
     if (!nextPhone) {
       setError("Enter a valid phone number.");
       setSubmitting(false);
@@ -168,13 +176,13 @@ export default function LoginPage({ onLogin }: Props) {
     if (isSupabaseConfigured && supabase) {
       if (!otpSent) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          phone: nextPhone,
+          email: nextEmail,
           password: nextPassword,
           options: {
-            channel: "sms",
             data: {
               name: nextName,
-              username: nextPhone,
+              username: nextEmail.split("@")[0],
+              phone: nextPhone,
               position: nextPosition,
             },
           },
@@ -186,9 +194,24 @@ export default function LoginPage({ onLogin }: Props) {
           return;
         }
 
-        if (signUpData.user && signUpData.session) {
-          setSignUp({ name: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
-          onLogin(teacherFromAuthUser(signUpData.user), { showIntro: true });
+        if (!signUpData.user || !signUpData.session) {
+          setError("Disable email confirmation in Supabase or confirm email first before phone verification.");
+          setSubmitting(false);
+          return;
+        }
+
+        const { error: phoneUpdateError } = await supabase.auth.updateUser({
+          phone: nextPhone,
+          data: {
+            name: nextName,
+            username: nextEmail.split("@")[0],
+            phone: nextPhone,
+            position: nextPosition,
+          },
+        });
+
+        if (phoneUpdateError) {
+          setError(phoneUpdateError.message);
           setSubmitting(false);
           return;
         }
@@ -208,7 +231,7 @@ export default function LoginPage({ onLogin }: Props) {
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         phone: nextPhone,
         token: otp,
-        type: "sms",
+        type: "phone_change",
       });
 
       if (verifyError || !verifyData.user) {
@@ -217,9 +240,9 @@ export default function LoginPage({ onLogin }: Props) {
         return;
       }
 
-      setIdentifier(nextPhone);
+      setIdentifier(nextEmail);
       setPassword(nextPassword);
-      setSignUp({ name: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
+      setSignUp({ name: "", email: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
       setOtpSent(false);
       onLogin(teacherFromAuthUser(verifyData.user), { showIntro: true });
       setSubmitting(false);
@@ -230,16 +253,16 @@ export default function LoginPage({ onLogin }: Props) {
       name: nextName,
       username: nextPhone,
       position: nextPosition,
-      email: nextPhone,
+      email: nextEmail || nextPhone,
       password: nextPassword,
     };
 
     const nextAccounts = [...accounts, newTeacher];
     setAccounts(nextAccounts);
     saveTeacherAccounts(nextAccounts);
-    setIdentifier(nextPhone);
+    setIdentifier(nextEmail || nextPhone);
     setPassword(nextPassword);
-    setSignUp({ name: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
+    setSignUp({ name: "", email: "", phone: "", position: "", password: "", confirmPassword: "", otp: "" });
     setMode("signin");
     onLogin(
       { name: newTeacher.name, username: newTeacher.username, position: newTeacher.position },
@@ -390,6 +413,18 @@ export default function LoginPage({ onLogin }: Props) {
               </AuthField>
 
               <div className="grid gap-5 md:grid-cols-2">
+                {isSupabaseConfigured ? (
+                  <AuthField label="Email">
+                    <input
+                      type="email"
+                      value={signUp.email}
+                      onChange={(e) => setSignUp((current) => ({ ...current, email: e.target.value }))}
+                      placeholder="Enter email"
+                      className={inputClass}
+                    />
+                  </AuthField>
+                ) : null}
+
                 <AuthField label="Phone Number">
                   <input
                     type="tel"
