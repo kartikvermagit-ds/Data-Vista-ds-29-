@@ -151,7 +151,8 @@ html {
   display: inline-grid;
   place-items: center;
   color: #ededed;
-  cursor: default;
+  cursor: pointer;
+  user-select: none;
 }
 
 .obsidian-title__text,
@@ -161,8 +162,9 @@ html {
     opacity 0.72s ease-in-out,
     filter 0.72s ease-in-out,
     clip-path 0.72s ease-in-out,
-    transform 0.72s ease-in-out;
-  will-change: opacity, filter, clip-path, transform;
+    transform 0.72s ease-in-out,
+    letter-spacing 0.32s ease-in-out;
+  will-change: opacity, filter, clip-path, transform, letter-spacing;
 }
 
 .obsidian-title__text {
@@ -207,6 +209,13 @@ html {
   opacity: 0;
   filter: blur(2px);
   clip-path: inset(0 0 0 100%);
+}
+
+.obsidian-title:active .obsidian-title__text,
+.obsidian-title:active .obsidian-title__shimmer {
+  transform: scaleX(0.9) scaleY(0.84);
+  filter: blur(1.4px);
+  letter-spacing: 0.18em;
 }
 
 .obsidian-title:hover .obsidian-title__shimmer,

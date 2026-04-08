@@ -302,9 +302,10 @@ export default function LoginPage({ onLogin }: Props) {
             <motion.h1
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
+              whileTap={{ scale: 0.94, y: 1 }}
               transition={{ delay: 0.12, duration: 0.45 }}
-              className="obsidian-title cursor-pointer rounded-xl px-3 py-2 font-['Playfair_Display'] text-[2rem] font-semibold uppercase tracking-[0.42em] transition-all duration-300 hover:scale-[1.035] hover:bg-white/[0.04] sm:text-[2.2rem]"
-              style={{ textShadow: "0 0 16px rgba(255,255,255,0.14)" }}
+              className="obsidian-title cursor-pointer rounded-xl px-4 py-3 font-['Playfair_Display'] text-[2.35rem] font-bold uppercase tracking-[0.46em] transition-all duration-300 hover:scale-[1.05] hover:bg-white/[0.05] sm:text-[2.8rem]"
+              style={{ textShadow: "0 0 16px rgba(255,255,255,0.16)" }}
             >
               <span className="obsidian-title__text text-[#F8F8F8]">DATA VISTA</span>
               <span aria-hidden="true" className="obsidian-title__shimmer">
