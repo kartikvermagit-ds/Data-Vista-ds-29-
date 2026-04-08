@@ -166,10 +166,11 @@ html {
 }
 
 .obsidian-title__text {
-  color: #ededed;
+  color: #f8f8f8;
   opacity: 1;
   filter: blur(0);
   clip-path: inset(0 0 0 0);
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.12);
 }
 
 .obsidian-title__shimmer {
@@ -178,24 +179,40 @@ html {
   filter: blur(0);
   clip-path: inset(0 100% 0 0);
   mix-blend-mode: lighten;
-  background: linear-gradient(90deg, transparent 0%, rgba(192, 160, 98, 0.12) 35%, rgba(192, 160, 98, 0.95) 50%, rgba(192, 160, 98, 0.18) 65%, transparent 100%);
-  background-size: 220% 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 0, 211, 0.92) 14%,
+    rgba(75, 0, 130, 0.95) 25%,
+    rgba(0, 102, 255, 0.96) 37%,
+    rgba(0, 196, 140, 0.95) 49%,
+    rgba(255, 223, 0, 0.98) 61%,
+    rgba(255, 140, 0, 0.96) 73%,
+    rgba(255, 72, 72, 0.94) 85%,
+    transparent 100%
+  );
+  background-size: 240% 100%;
   background-position: 100% 50%;
   -webkit-background-clip: text;
   background-clip: text;
+  text-shadow:
+    0 0 14px rgba(148, 0, 211, 0.26),
+    0 0 18px rgba(0, 102, 255, 0.24),
+    0 0 22px rgba(255, 223, 0, 0.24),
+    0 0 28px rgba(255, 72, 72, 0.2);
 }
 
 .obsidian-title:hover .obsidian-title__text,
 .obsidian-title:focus-visible .obsidian-title__text {
   opacity: 0;
-  filter: blur(3px);
+  filter: blur(2px);
   clip-path: inset(0 0 0 100%);
 }
 
 .obsidian-title:hover .obsidian-title__shimmer,
 .obsidian-title:focus-visible .obsidian-title__shimmer {
   opacity: 1;
-  filter: blur(1px);
+  filter: blur(0.4px);
   clip-path: inset(0 0 0 0);
   background-position: 0% 50%;
 }
