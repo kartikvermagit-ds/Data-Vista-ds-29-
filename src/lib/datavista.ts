@@ -102,21 +102,26 @@ function normalizeSettings(settings?: Partial<ClassSettings>): ClassSettings {
   const className = merged.className.trim();
   const section = merged.section.trim();
   const term = merged.term.trim();
+  const normalizedSchoolName = schoolName.toLowerCase().replace(/\s+/g, "");
+  const normalizedClassName = className.toLowerCase().replace(/\s+/g, "");
+  const normalizedSection = section.toLowerCase().replace(/\s+/g, "");
+  const normalizedTerm = term.toLowerCase().replace(/\s+/g, "");
 
-  if (schoolName === "Data Vista Public School") {
+  if (normalizedSchoolName === "datavistapublicschool") {
     merged.schoolName = BASE_SETTINGS.schoolName;
   }
 
   if (
-    (className === "Grade 9A" && term === "2026 Term 2") ||
-    (className === "B.Tech" && section === "CSE") ||
-    (className === "Grade 9A" && section === "9A")
+    (normalizedClassName === "grade9a" && normalizedTerm === "2026term2") ||
+    (normalizedClassName === "b.tech" && normalizedSection === "cse") ||
+    (normalizedClassName === "grade9a" && normalizedSection === "9a") ||
+    (normalizedClassName === "grade9" && normalizedSection === "a")
   ) {
     merged.className = BASE_SETTINGS.className;
     merged.section = BASE_SETTINGS.section;
   }
 
-  if (term === "2026 Term 2" || term === "Semester 4") {
+  if (normalizedTerm === "2026term2" || normalizedTerm === "semester4") {
     merged.term = BASE_SETTINGS.term;
   }
 
