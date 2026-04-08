@@ -92,6 +92,44 @@ const BASE_SETTINGS: ClassSettings = {
   weeklyDigest: true,
 };
 
+function normalizeSettings(settings?: Partial<ClassSettings>): ClassSettings {
+  const merged: ClassSettings = {
+    ...BASE_SETTINGS,
+    ...settings,
+  };
+
+  const schoolName = merged.schoolName.trim();
+  const className = merged.className.trim();
+  const section = merged.section.trim();
+  const term = merged.term.trim();
+
+  if (schoolName === "Data Vista Public School") {
+    merged.schoolName = BASE_SETTINGS.schoolName;
+  }
+
+  if (
+    (className === "Grade 9A" && term === "2026 Term 2") ||
+    (className === "B.Tech" && section === "CSE") ||
+    (className === "Grade 9A" && section === "9A")
+  ) {
+    merged.className = BASE_SETTINGS.className;
+    merged.section = BASE_SETTINGS.section;
+  }
+
+  if (term === "2026 Term 2" || term === "Semester 4") {
+    merged.term = BASE_SETTINGS.term;
+  }
+
+  return merged;
+}
+
+function normalizeState(state: DataVistaState): DataVistaState {
+  return {
+    ...state,
+    settings: normalizeSettings(state.settings),
+  };
+}
+
 const seedProfiles = [
   { name: "Aarav Mehta", guardianName: "Ritesh Mehta", phone: "9876543210", email: "aarav@datavista.edu", marks: 91, attendance: 96, assignments: 94, participation: 88, trend: "Rising" as const },
   { name: "Diya Nair", guardianName: "Sreeja Nair", phone: "9811122233", email: "diya@datavista.edu", marks: 84, attendance: 89, assignments: 86, participation: 78, trend: "Steady" as const },
@@ -263,7 +301,7 @@ export function createSeedState(): DataVistaState {
   return {
     students: [],
     assignments: [],
-    settings: BASE_SETTINGS,
+    settings: normalizeSettings(),
   };
 }
 
@@ -305,7 +343,7 @@ export function loadState(teacher?: string | Pick<Teacher, "id" | "email" | "use
     const parsed = JSON.parse(raw) as DataVistaState;
     if (!isStateShape(parsed) || !parsed.students?.length) return createSeedState();
     if (isLegacySeedState(parsed)) return createSeedState();
-    return parsed;
+    return normalizeState(parsed);
   } catch {
     return createSeedState();
   }
@@ -351,8 +389,9 @@ export async function loadStateForTeacher(teacher?: Teacher): Promise<DataVistaS
     return emptyState;
   }
 
-  saveState(data.state, teacher);
-  return data.state;
+  const normalizedState = normalizeState(data.state);
+  saveState(normalizedState, teacher);
+  return normalizedState;
 }
 
 export async function saveStateForTeacher(state: DataVistaState, teacher?: Teacher) {
@@ -388,7 +427,7 @@ export async function fetchLatestStateForTeacher(teacher?: Teacher): Promise<Dat
     return null;
   }
 
-  return data.state;
+  return normalizeState(data.state);
 }
 
 export async function resetStateForTeacher(teacher?: Teacher) {
