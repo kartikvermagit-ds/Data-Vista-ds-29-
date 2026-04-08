@@ -24,7 +24,7 @@ const actionButtonClass =
   "mt-2 flex h-12 w-full transform-gpu items-center justify-center gap-2 rounded-lg bg-[#EDEDED] text-[11px] font-semibold uppercase tracking-[0.3em] text-black shadow-[0_0_0_rgba(192,160,98,0)] transition-all duration-300 ease-in-out hover:scale-[1.02] hover:bg-[#D7C39A] hover:shadow-[0_8px_24px_rgba(192,160,98,0.16)]";
 
 const modeButtonClass =
-  "rounded-lg px-4 py-3 text-[11px] font-medium uppercase tracking-[0.28em] transition-all duration-300 ease-in-out hover:text-[#D7C39A]";
+  "rounded-lg px-4 py-3 text-[11px] font-medium uppercase tracking-[0.28em] transition-all duration-300 ease-in-out";
 
 function loadTeacherAccounts() {
   if (typeof window === "undefined") return DEFAULT_TEACHERS;
@@ -319,14 +319,14 @@ export default function LoginPage({ onLogin }: Props) {
             <button
               type="button"
               onClick={() => switchMode("signin")}
-              className={`${modeButtonClass} ${mode === "signin" ? "bg-[#EDEDED] text-black shadow-[0_0_0_rgba(192,160,98,0)] hover:scale-[1.02] hover:bg-[#D7C39A] hover:shadow-[0_8px_24px_rgba(192,160,98,0.16)]" : "text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-[#EDEDED]"}`}
+              className={`${modeButtonClass} ${mode === "signin" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-[#EDEDED]"}`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => switchMode("signup")}
-              className={`${modeButtonClass} ${mode === "signup" ? "bg-[#EDEDED] text-black shadow-[0_0_0_rgba(192,160,98,0)] hover:scale-[1.02] hover:bg-[#D7C39A] hover:shadow-[0_8px_24px_rgba(192,160,98,0.16)]" : "text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-[#EDEDED]"}`}
+              className={`${modeButtonClass} ${mode === "signup" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-[#EDEDED]"}`}
             >
               Sign Up
             </button>
