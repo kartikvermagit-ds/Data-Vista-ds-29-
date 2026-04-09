@@ -1,4 +1,5 @@
-import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import "@google/model-viewer";
+import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -241,110 +242,7 @@ function Section({ eyebrow, title, description, action }: { eyebrow: string; tit
 function Panel({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) { return <Card className="rounded-[30px] border-[#C0A062]/12 bg-white/[0.03] p-5 xl:p-6"><div className="mb-5"><h4 className="text-xl font-semibold text-[#F5F0E6]">{title}</h4><p className="mt-1 text-sm text-[#A7A093]">{subtitle}</p></div>{children}</Card>; }
 function Chart({ children, className }: { children: React.ReactNode; className?: string }) { return <div className={cn("h-[300px] w-full", className)}><ResponsiveContainer width="100%" height="100%">{children as React.ReactElement}</ResponsiveContainer></div>; }
 function RobotModelViewer({ modelPath }: { modelPath: string }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const frameRef = useRef<number>();
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let disposed = false;
-    let cleanup = () => {};
-
-    const setup = async () => {
-      try {
-        setStatus("loading");
-
-        const THREE = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/three@0.182/build/three.module.js");
-        const { GLTFLoader } = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/three@0.182/examples/jsm/loaders/GLTFLoader.js");
-        const { OrbitControls } = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/three@0.182/examples/jsm/controls/OrbitControls.js");
-
-        if (disposed) return;
-
-        const container = canvas.parentElement;
-        if (!container) return;
-
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111);
-
-        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-        camera.position.set(0, 1, 3);
-
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-        const hemisphere = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
-        scene.add(hemisphere);
-
-        const directional = new THREE.DirectionalLight(0xf4e6c4, 1.4);
-        directional.position.set(2, 3, 4);
-        scene.add(directional);
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.enablePan = false;
-
-        const loader = new GLTFLoader();
-        let model: InstanceType<typeof THREE.Group> | null = null;
-
-        const resize = () => {
-          const width = Math.max(container.clientWidth, 1);
-          const height = Math.max(container.clientHeight, 1);
-          camera.aspect = width / height;
-          camera.updateProjectionMatrix();
-          renderer.setSize(width, height, false);
-        };
-
-        resize();
-        window.addEventListener("resize", resize);
-
-        loader.load(
-          modelPath,
-          (gltf) => {
-            if (disposed) return;
-            model = gltf.scene;
-            model.scale.set(1, 1, 1);
-            scene.add(model);
-            setStatus("ready");
-          },
-          undefined,
-          () => {
-            if (!disposed) setStatus("error");
-          },
-        );
-
-        const animate = () => {
-          if (disposed) return;
-          frameRef.current = window.requestAnimationFrame(animate);
-          if (model) model.rotation.y += 0.003;
-          controls.update();
-          renderer.render(scene, camera);
-        };
-
-        animate();
-
-        cleanup = () => {
-          disposed = true;
-          window.removeEventListener("resize", resize);
-          if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
-          controls.dispose();
-          renderer.dispose();
-        };
-      } catch {
-        if (!disposed) setStatus("error");
-      }
-    };
-
-    void setup();
-
-    return () => {
-      disposed = true;
-      cleanup();
-    };
-  }, [modelPath]);
-
-  return <div className="relative h-[420px] overflow-hidden rounded-[26px] border border-[#C0A062]/12 bg-[radial-gradient(circle_at_top,rgba(192,160,98,0.12),transparent_42%),linear-gradient(180deg,#090909_0%,#050505_100%)]"><canvas ref={canvasRef} className="block h-full w-full" />{status !== "ready" ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 px-6 text-center"><div className="h-16 w-16 rounded-full border border-[#C0A062]/20 bg-[#C0A062]/10" />{status === "loading" ? <><p className="text-sm font-medium text-[#F5F0E6]">Loading 3D viewer...</p><p className="max-w-xs text-xs text-[#A79B84]">Place your model at <span className="font-semibold text-[#E7D19A]">public/robot.glb</span> to render it here.</p></> : <><p className="text-sm font-medium text-rose-200">Robot model could not be loaded.</p><p className="max-w-xs text-xs text-[#C9B7B7]">Add a valid GLB file at <span className="font-semibold text-[#F1D0D0]">public/robot.glb</span> and reload the page.</p></>}</div> : null}</div>;
+  return <div className="relative overflow-hidden rounded-[26px] border border-[#C0A062]/12 bg-[radial-gradient(circle_at_top,rgba(192,160,98,0.12),transparent_42%),linear-gradient(180deg,#090909_0%,#050505_100%)]"><model-viewer src={modelPath} camera-controls auto-rotate rotation-per-second="18deg" shadow-intensity="1" exposure="1.05" environment-image="neutral" interaction-prompt="auto" tone-mapping="commerce" className="block h-[420px] w-full bg-transparent" style={{ "--progress-bar-color": "#C0A062", "--progress-bar-height": "4px" } as React.CSSProperties}><button className="rounded-full border border-[#C0A062]/20 bg-black/65 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#F5F0E6]" slot="poster">Tap To Load Model</button></model-viewer><div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 to-transparent" /></div>;
 }
 function Metric({ label, value, hint }: { label: string; value: string | number; hint: string }) { return <Card className="rounded-[28px] border-[#C0A062]/12 bg-white/[0.03] p-5"><p className="text-sm uppercase tracking-[0.18em] text-[#8F856F]">{label}</p><p className="mt-2 text-4xl font-semibold text-[#F5F0E6]">{value}</p><p className="mt-2 text-sm text-[#A7A093]">{hint}</p></Card>; }
 function MiniStat({ label, value }: { label: string; value: string | number }) { return <div className="rounded-2xl border border-[#C0A062]/12 bg-white/[0.03] px-3 py-3"><p className="text-xs uppercase tracking-[0.18em] text-[#8F856F]">{label}</p><p className="mt-1 text-lg font-semibold text-[#F5F0E6]">{value}</p></div>; }
