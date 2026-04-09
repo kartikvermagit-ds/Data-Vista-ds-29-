@@ -1,4 +1,4 @@
-import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -230,7 +230,7 @@ function AttendancePage({ students, selected, selectedId, onSelect, onMarkToday 
 function MarksPage({ students, selected, selectedId, onSelect, histogram, subjectCards }: { students: Student[]; selected: Student; selectedId: string; onSelect: (id: string) => void; histogram: Array<{ range: string; count: number }>; subjectCards: Array<{ subject: string; avgScore: number; avgAttendance: number }> }) { return <div className="space-y-6"><Section eyebrow="Assessment" title="Marks & Exams" description="Review subject strength, exam trends, and distribution across the class." /><StudentTabs students={students} selectedId={selectedId} onSelect={onSelect} /><div className="grid gap-6 xl:grid-cols-[1fr_1fr]"><Panel title="Subject Comparison Radar" subtitle={`${selected.name}'s subject profile`}><Chart><RadarChart data={SUBJECTS.map((subject) => ({ subject: shortSubject(subject), score: selected.subjectScores[subject] }))}><PolarGrid stroke="#28455f" /><PolarAngleAxis dataKey="subject" tick={{ fill: "#cbd5e1", fontSize: 12 }} /><PolarRadiusAxis domain={[40, 100]} tick={{ fill: "#7f96ad", fontSize: 11 }} /><Radar dataKey="score" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.3} strokeWidth={2} /></RadarChart></Chart></Panel><Panel title="Score Distribution" subtitle="Where current class marks sit"><Chart><BarChart data={histogram}><CartesianGrid stroke="#1f3346" vertical={false} /><XAxis dataKey="range" stroke="#7f96ad" /><YAxis allowDecimals={false} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Bar dataKey="count" fill="#f59e0b" radius={[8, 8, 0, 0]} /></BarChart></Chart></Panel></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{subjectCards.map((card) => <Card key={card.subject} className="rounded-[28px] border-white/10 bg-slate-950/70 p-5"><p className="text-sm uppercase tracking-[0.2em] text-slate-500">{shortSubject(card.subject)}</p><p className="mt-4 text-3xl font-semibold text-white">{card.avgScore}%</p><p className="mt-2 text-sm text-slate-400">{card.avgAttendance}% avg attendance</p></Card>)}</div><Panel title="Exam Results" subtitle="Unit test and half-yearly breakdown"><Tabs defaultValue={EXAMS[0]}><TabsList className="h-auto w-full justify-start overflow-x-auto rounded-full bg-white/5 p-1">{EXAMS.map((exam) => <TabsTrigger key={exam} value={exam} className="rounded-full data-[state=active]:bg-sky-500 data-[state=active]:text-slate-950">{exam}</TabsTrigger>)}</TabsList>{EXAMS.map((exam) => <TabsContent key={exam} value={exam}><div className="mt-4 overflow-x-auto rounded-3xl border border-white/10"><div className="min-w-[720px]"><div className="grid grid-cols-[1.5fr_repeat(5,1fr)] bg-white/5 px-4 py-3 text-xs uppercase tracking-[0.2em] text-slate-400"><span>Student</span>{SUBJECTS.map((subject) => <span key={subject}>{shortSubject(subject)}</span>)}</div><div className="divide-y divide-white/10">{students.map((student) => <div key={`${student.id}-${exam}`} className="grid grid-cols-[1.5fr_repeat(5,1fr)] px-4 py-3 text-sm text-slate-200"><span>{student.name}</span>{SUBJECTS.map((subject) => <span key={subject}>{student.examScores[exam as ExamName][subject]}</span>)}</div>)}</div></div></div></TabsContent>)}</Tabs></Panel></div>; }
 function AssignmentsPage({ assignments, data, onAddAssignment, onDeleteAssignment }: { assignments: DataVistaState["assignments"]; data: Array<{ name: string; onTime: number; late: number; pending: number }>; onAddAssignment: () => void; onDeleteAssignment: (assignmentId: string) => void }) { return <div className="space-y-6"><Section eyebrow="Coursework" title="Assignments" description="Track submission health across the class and identify students slipping on deadlines." action={<Button className="rounded-full bg-[#C0A062] text-[#16120B] hover:bg-[#D4B370]" onClick={onAddAssignment}><Plus className="mr-2 h-4 w-4" />Add Assignment</Button>} /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{assignments.map((assignment) => { const completion = Math.round((assignment.submitted / assignment.totalStudents) * 100); return <Card key={assignment.id} className="rounded-[28px] border-[#C0A062]/12 bg-white/[0.03] p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-sm uppercase tracking-[0.2em] text-[#8F856F]">{shortSubject(assignment.subject)}</p><h3 className="mt-2 text-xl font-semibold text-[#F5F0E6]">{assignment.title}</h3></div><div className="flex items-start gap-2"><Badge className="border border-[#C0A062]/20 bg-[#C0A062]/10 text-[#E7D19A]">{completion}%</Badge><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-rose-300 hover:bg-rose-400/10 hover:text-rose-200" onClick={() => onDeleteAssignment(assignment.id)} aria-label={`Delete ${assignment.title}`}><Trash2 className="h-4 w-4" /></Button></div></div><p className="mt-3 text-sm text-[#A7A093]">Due {assignment.dueDate}</p><div className="mt-4 space-y-2"><Progress value={completion} className="h-2 bg-white/10" /><div className="flex justify-between text-xs uppercase tracking-[0.16em] text-[#8F856F]"><span>{assignment.submitted} submitted</span><span>{assignment.totalStudents - assignment.submitted} pending</span></div></div></Card>; })}</div><Panel title="Submission Mix by Student" subtitle="On-time, late, and pending assignment counts"><Chart className="h-[360px]"><BarChart data={data}><CartesianGrid stroke="#2B2418" vertical={false} /><XAxis dataKey="name" stroke="#9D8F72" /><YAxis allowDecimals={false} stroke="#9D8F72" /><Tooltip contentStyle={tooltipStyle} /><Legend /><Bar dataKey="onTime" stackId="a" fill="#C0A062" /><Bar dataKey="late" stackId="a" fill="#8E6E2C" /><Bar dataKey="pending" stackId="a" fill="#6A3B33" /></BarChart></Chart></Panel></div>; }
 
-function PredictionsPage({ students, selected, selectedId, onSelect }: { students: Student[]; selected: Student; selectedId: string; onSelect: (id: string) => void }) { return <div className="space-y-6"><Section eyebrow="Forecasting" title="Predictions" description="Surface grade forecasts, momentum direction, and confidence for intervention planning." /><Panel title="AI Forecast Table" subtitle="Predicted final outcome for each student"><div className="space-y-3">{students.map((student) => <div key={student.id} className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:grid-cols-[1.4fr_0.7fr_0.8fr_1fr] sm:items-center"><div><p className="font-medium text-white">{student.name}</p><p className="text-xs text-slate-400">Overall {getOverallScore(student)}%</p></div><Badge className="w-fit border border-sky-400/20 bg-sky-400/10 text-sky-200">{student.predictedGrade}</Badge><div className={cn("text-sm font-medium", trendTone[student.trend])}>{student.trend}</div><div><div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-slate-500"><span>Confidence</span><span>{student.confidence}%</span></div><Progress value={student.confidence} className="h-2 bg-white/10" /></div></div>)}</div></Panel><StudentTabs students={students} selectedId={selectedId} onSelect={onSelect} /><Panel title="Trajectory Line" subtitle={`${selected.name}'s recent score movement`}><Chart><LineChart data={selected.trajectory}><CartesianGrid stroke="#1f3346" strokeDasharray="4 4" /><XAxis dataKey="month" stroke="#7f96ad" /><YAxis domain={[40, 100]} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="score" stroke="#a78bfa" strokeWidth={3} dot={{ fill: "#38bdf8", r: 4 }} /></LineChart></Chart></Panel></div>; }
+function PredictionsPage({ students, selected, selectedId, onSelect }: { students: Student[]; selected: Student; selectedId: string; onSelect: (id: string) => void }) { return <div className="space-y-6"><Section eyebrow="Forecasting" title="Predictions" description="Surface grade forecasts, momentum direction, and confidence for intervention planning." /><div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]"><Panel title="AI Forecast Table" subtitle="Predicted final outcome for each student"><div className="space-y-3">{students.map((student) => <div key={student.id} className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:grid-cols-[1.4fr_0.7fr_0.8fr_1fr] sm:items-center"><div><p className="font-medium text-white">{student.name}</p><p className="text-xs text-slate-400">Overall {getOverallScore(student)}%</p></div><Badge className="w-fit border border-sky-400/20 bg-sky-400/10 text-sky-200">{student.predictedGrade}</Badge><div className={cn("text-sm font-medium", trendTone[student.trend])}>{student.trend}</div><div><div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-slate-500"><span>Confidence</span><span>{student.confidence}%</span></div><Progress value={student.confidence} className="h-2 bg-white/10" /></div></div>)}</div></Panel><Panel title="3D Robot Model" subtitle="Interactive WebGL preview inside Predictions"><RobotModelViewer modelPath="/robot.glb" /></Panel></div><StudentTabs students={students} selectedId={selectedId} onSelect={onSelect} /><Panel title="Trajectory Line" subtitle={`${selected.name}'s recent score movement`}><Chart><LineChart data={selected.trajectory}><CartesianGrid stroke="#1f3346" strokeDasharray="4 4" /><XAxis dataKey="month" stroke="#7f96ad" /><YAxis domain={[40, 100]} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="score" stroke="#a78bfa" strokeWidth={3} dot={{ fill: "#38bdf8", r: 4 }} /></LineChart></Chart></Panel></div>; }
 
 function InsightsPage({ insights, classHealth, scatter }: { insights: Array<{ id: string; tone: string; title: string; detail: string }>; classHealth: number; scatter: Array<{ x: number; y: number; name: string }> }) { return <div className="space-y-6"><Section eyebrow="Intelligence" title="AI Insights" description="Automated flags across class health, intervention candidates, and performance clusters." /><div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]"><Panel title="Flagged Insights" subtitle="Machine-guided reading of the current class state"><div className="space-y-3">{insights.map((insight) => <div key={insight.id} className={cn("rounded-2xl border p-4", insight.tone === "rose" && "border-rose-400/15 bg-rose-400/8", insight.tone === "amber" && "border-amber-400/15 bg-amber-400/8", insight.tone === "emerald" && "border-emerald-400/15 bg-emerald-400/8")}><p className="font-medium text-white">{insight.title}</p><p className="mt-1 text-sm text-slate-300">{insight.detail}</p></div>)}</div></Panel><Panel title="Class Health Score" subtitle="Composite performance pulse"><Chart><PieChart><Pie data={[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }]} innerRadius={64} outerRadius={94} dataKey="value" startAngle={90} endAngle={-270}>{[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }].map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart></Chart><div className="-mt-8 text-center"><p className="text-5xl font-semibold text-white">{classHealth}</p><p className="text-sm uppercase tracking-[0.22em] text-slate-500">out of 100</p></div></Panel></div><Panel title="Attendance vs Marks" subtitle="Students clustered by reliability and academic output"><Chart className="h-[360px]"><ScatterChart><CartesianGrid stroke="#1f3346" /><XAxis type="number" dataKey="x" name="Attendance" unit="%" stroke="#7f96ad" /><YAxis type="number" dataKey="y" name="Marks" unit="%" stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} formatter={(value) => `${value}%`} cursor={{ strokeDasharray: "4 4" }} /><Scatter data={scatter} fill="#38bdf8" /></ScatterChart></Chart></Panel></div>; }
 
@@ -240,6 +240,112 @@ function Hero() { return <Card className="overflow-hidden rounded-[36px] border-
 function Section({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) { return <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><p className="text-xs uppercase tracking-[0.24em] text-[#8F856F]">{eyebrow}</p><h3 className="mt-2 text-3xl font-semibold text-[#F5F0E6]">{title}</h3><p className="mt-2 text-sm text-[#A7A093]">{description}</p></div>{action}</div>; }
 function Panel({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) { return <Card className="rounded-[30px] border-[#C0A062]/12 bg-white/[0.03] p-5 xl:p-6"><div className="mb-5"><h4 className="text-xl font-semibold text-[#F5F0E6]">{title}</h4><p className="mt-1 text-sm text-[#A7A093]">{subtitle}</p></div>{children}</Card>; }
 function Chart({ children, className }: { children: React.ReactNode; className?: string }) { return <div className={cn("h-[300px] w-full", className)}><ResponsiveContainer width="100%" height="100%">{children as React.ReactElement}</ResponsiveContainer></div>; }
+function RobotModelViewer({ modelPath }: { modelPath: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameRef = useRef<number>();
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let disposed = false;
+    let cleanup = () => {};
+
+    const setup = async () => {
+      try {
+        setStatus("loading");
+
+        const THREE = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/three@0.182/build/three.module.js");
+        const { GLTFLoader } = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/three@0.182/examples/jsm/loaders/GLTFLoader.js");
+        const { OrbitControls } = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/three@0.182/examples/jsm/controls/OrbitControls.js");
+
+        if (disposed) return;
+
+        const container = canvas.parentElement;
+        if (!container) return;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        camera.position.set(0, 1, 3);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const hemisphere = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
+        scene.add(hemisphere);
+
+        const directional = new THREE.DirectionalLight(0xf4e6c4, 1.4);
+        directional.position.set(2, 3, 4);
+        scene.add(directional);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false;
+
+        const loader = new GLTFLoader();
+        let model: InstanceType<typeof THREE.Group> | null = null;
+
+        const resize = () => {
+          const width = Math.max(container.clientWidth, 1);
+          const height = Math.max(container.clientHeight, 1);
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height, false);
+        };
+
+        resize();
+        window.addEventListener("resize", resize);
+
+        loader.load(
+          modelPath,
+          (gltf) => {
+            if (disposed) return;
+            model = gltf.scene;
+            model.scale.set(1, 1, 1);
+            scene.add(model);
+            setStatus("ready");
+          },
+          undefined,
+          () => {
+            if (!disposed) setStatus("error");
+          },
+        );
+
+        const animate = () => {
+          if (disposed) return;
+          frameRef.current = window.requestAnimationFrame(animate);
+          if (model) model.rotation.y += 0.003;
+          controls.update();
+          renderer.render(scene, camera);
+        };
+
+        animate();
+
+        cleanup = () => {
+          disposed = true;
+          window.removeEventListener("resize", resize);
+          if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+          controls.dispose();
+          renderer.dispose();
+        };
+      } catch {
+        if (!disposed) setStatus("error");
+      }
+    };
+
+    void setup();
+
+    return () => {
+      disposed = true;
+      cleanup();
+    };
+  }, [modelPath]);
+
+  return <div className="relative h-[420px] overflow-hidden rounded-[26px] border border-[#C0A062]/12 bg-[radial-gradient(circle_at_top,rgba(192,160,98,0.12),transparent_42%),linear-gradient(180deg,#090909_0%,#050505_100%)]"><canvas ref={canvasRef} className="block h-full w-full" />{status !== "ready" ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 px-6 text-center"><div className="h-16 w-16 rounded-full border border-[#C0A062]/20 bg-[#C0A062]/10" />{status === "loading" ? <><p className="text-sm font-medium text-[#F5F0E6]">Loading 3D viewer...</p><p className="max-w-xs text-xs text-[#A79B84]">Place your model at <span className="font-semibold text-[#E7D19A]">public/robot.glb</span> to render it here.</p></> : <><p className="text-sm font-medium text-rose-200">Robot model could not be loaded.</p><p className="max-w-xs text-xs text-[#C9B7B7]">Add a valid GLB file at <span className="font-semibold text-[#F1D0D0]">public/robot.glb</span> and reload the page.</p></>}</div> : null}</div>;
+}
 function Metric({ label, value, hint }: { label: string; value: string | number; hint: string }) { return <Card className="rounded-[28px] border-[#C0A062]/12 bg-white/[0.03] p-5"><p className="text-sm uppercase tracking-[0.18em] text-[#8F856F]">{label}</p><p className="mt-2 text-4xl font-semibold text-[#F5F0E6]">{value}</p><p className="mt-2 text-sm text-[#A7A093]">{hint}</p></Card>; }
 function MiniStat({ label, value }: { label: string; value: string | number }) { return <div className="rounded-2xl border border-[#C0A062]/12 bg-white/[0.03] px-3 py-3"><p className="text-xs uppercase tracking-[0.18em] text-[#8F856F]">{label}</p><p className="mt-1 text-lg font-semibold text-[#F5F0E6]">{value}</p></div>; }
 function MiniCard({ label, value }: { label: string; value: string | number }) { return <Card className="rounded-[24px] border-[#C0A062]/12 bg-white/[0.03] p-4"><p className="text-xs uppercase tracking-[0.2em] text-[#8F856F]">{label}</p><p className="mt-2 text-2xl font-semibold text-[#F5F0E6]">{value}</p></Card>; }
