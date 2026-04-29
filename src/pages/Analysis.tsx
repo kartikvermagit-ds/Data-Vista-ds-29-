@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import CameraGesturePanel from "@/components/CameraGesturePanel";
 import { useCameraHandGestures } from "@/hooks/useCameraHandGestures";
+import PredictionInsightsPanel from "@/components/predictions/PredictionInsightsPanel";
 
 const COLORS = {
   improving: "hsl(199, 89%, 48%)",
@@ -108,6 +109,8 @@ export default function Analysis() {
           Detailed class performance insights • Active focus: {activeSection}
         </p>
       </div>
+
+      <PredictionInsightsPanel students={students} />
 
       {/* Class Averages Radar */}
       <div className="grid md:grid-cols-2 gap-6">

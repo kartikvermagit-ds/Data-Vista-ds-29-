@@ -6,6 +6,7 @@ import { Users, TrendingUp, TrendingDown, Award, UserPlus, ArrowRight, Sparkles,
 import { getStudents, getClassAverage, getTopStudents, getWeakStudents, getOverallScore, getPrediction, type Student } from "@/lib/studentStore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import InteractiveDashboardHero from "@/components/InteractiveDashboardHero";
+import PredictionInsightsPanel from "@/components/predictions/PredictionInsightsPanel";
 
 const statStyles = [
   { bg: "bg-primary/10", icon: "text-primary", border: "border-primary/20" },
@@ -78,6 +79,8 @@ export default function Dashboard() {
         improvingCount={improving.length}
         weakCount={weak.length}
       />
+
+      <PredictionInsightsPanel students={students} />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
