@@ -144,6 +144,23 @@
 
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+img,
+canvas,
+svg,
+video,
+model-viewer {
+  max-width: 100%;
 }
 
 .obsidian-title {
