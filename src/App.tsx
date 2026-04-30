@@ -20,6 +20,9 @@ type RiskFilter = "All" | "Low" | "Medium" | "High";
 type AddStudentForm = { name: string; guardianName: string; phone: string; email: string; marksAverage: string; attendanceRate: string; assignmentCompletion: string; participation: string };
 type AddAssignmentForm = { title: string; subject: Subject; dueDate: string; submitted: string; onTime: string; late: string };
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const apiUrl = (path: string) => `${API_BASE_URL}${path}`;
+
 const nav = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["students", "Students", Users],
@@ -163,7 +166,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
       return;
     }
 
-    const response = await fetch("/api/delete-account", {
+    const response = await fetch(apiUrl("/api/delete-account"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accessToken }),

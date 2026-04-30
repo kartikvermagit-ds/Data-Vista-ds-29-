@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Data Vista</string>
+    <string name="title_activity_main">Data Vista</string>
+    <string name="package_name">com.datavista.app</string>
+    <string name="custom_url_scheme">com.datavista.app</string>
+</resources>
