@@ -1,6 +1,6 @@
 import "@google/model-viewer";
 import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, Calculator, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { EXAMS, SUBJECTS, calculateClassHealth, createAssignmentFromForm, createStudentFromForm, exportBackupJson, exportStudentsCsv, fetchLatestStateForTeacher, getGradeFromScore, getOverallScore, loadState, loadStateForTeacher, markTodayForStudent, resetStateForTeacher, saveStateForTeacher, summarizeAttendance, type AttendanceStatus, type ClassSettings, type DataVistaState, type ExamName, type Student, type Subject } from "@/lib/datavista";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "settings";
+type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "calculator" | "settings";
 type RiskFilter = "All" | "Low" | "Medium" | "High";
 
 type AddStudentForm = { name: string; guardianName: string; phone: string; email: string; marksAverage: string; attendanceRate: string; assignmentCompletion: string; participation: string };
@@ -31,6 +31,7 @@ const nav = [
   ["assignments", "Assignments", BookOpenCheck],
   ["predictions", "Predictions", TrendingUp],
   ["insights", "AI Insights", BrainCircuit],
+  ["calculator", "Calculator", Calculator],
   ["settings", "Settings", Settings],
 ] as const;
 
@@ -208,6 +209,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
           {active === "assignments" ? <AssignmentsPage assignments={state.assignments} data={assignmentsByStudent} onAddAssignment={() => setAddAssignmentOpen(true)} onDeleteAssignment={deleteAssignment} /> : null}
           {active === "predictions" && selected ? <PredictionsPage students={state.students} selected={selected} selectedId={selectedId} onSelect={setSelectedId} /> : null}
           {active === "insights" ? <InsightsPage insights={insights} classHealth={classHealth} scatter={scatter} /> : null}
+          {active === "calculator" ? <CalculatorPage /> : null}
           {active === "settings" ? <SettingsPage settingsDraft={settingsDraft} setSettingsDraft={setSettingsDraft} saveSettings={saveSettings} exportCsv={exportCsv} exportBackup={exportBackup} resetDemo={resetDemo} deleteAccount={deleteAccount} /> : null}
         </main>
       </div>
@@ -245,6 +247,45 @@ function PredictionsPage({ students, selected, selectedId, onSelect }: { student
 
 function InsightsPage({ insights, classHealth, scatter }: { insights: Array<{ id: string; tone: string; title: string; detail: string }>; classHealth: number; scatter: Array<{ x: number; y: number; name: string }> }) { return <div className="space-y-6"><Section eyebrow="Intelligence" title="AI Insights" description="Automated flags across class health, intervention candidates, and performance clusters." /><div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]"><Panel title="Flagged Insights" subtitle="Machine-guided reading of the current class state"><div className="space-y-3">{insights.map((insight) => <div key={insight.id} className={cn("rounded-2xl border p-4", insight.tone === "rose" && "border-rose-400/15 bg-rose-400/8", insight.tone === "amber" && "border-amber-400/15 bg-amber-400/8", insight.tone === "emerald" && "border-emerald-400/15 bg-emerald-400/8")}><p className="font-medium text-white">{insight.title}</p><p className="mt-1 text-sm text-slate-300">{insight.detail}</p></div>)}</div></Panel><Panel title="Class Health Score" subtitle="Composite performance pulse"><Chart><PieChart><Pie data={[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }]} innerRadius={64} outerRadius={94} dataKey="value" startAngle={90} endAngle={-270}>{[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }].map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart></Chart><div className="-mt-8 text-center"><p className="text-5xl font-semibold text-white">{classHealth}</p><p className="text-sm uppercase tracking-[0.22em] text-slate-500">out of 100</p></div></Panel></div><Panel title="Attendance vs Marks" subtitle="Students clustered by reliability and academic output"><Chart className="h-[360px]"><ScatterChart><CartesianGrid stroke="#1f3346" /><XAxis type="number" dataKey="x" name="Attendance" unit="%" stroke="#7f96ad" /><YAxis type="number" dataKey="y" name="Marks" unit="%" stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} formatter={(value) => `${value}%`} cursor={{ strokeDasharray: "4 4" }} /><Scatter data={scatter} fill="#38bdf8" /></ScatterChart></Chart></Panel></div>; }
 
+function CalculatorPage() {
+  const [expression, setExpression] = useState("0");
+  const [preview, setPreview] = useState("");
+
+  const push = (value: string) => {
+    setExpression((current) => {
+      const next = current === "0" || current === "Error" ? value : `${current}${value}`;
+      return next.replace(/([+\-*/])([+\-*/])+$/g, "$2");
+    });
+  };
+  const clear = () => { setExpression("0"); setPreview(""); };
+  const backspace = () => setExpression((current) => current.length > 1 && current !== "Error" ? current.slice(0, -1) : "0");
+  const toggleSign = () => setExpression((current) => current.startsWith("-") ? current.slice(1) || "0" : current === "0" ? "-0" : `-${current}`);
+  const calculate = () => {
+    try {
+      const answer = formatCalculatorNumber(evaluateCalculatorExpression(expression));
+      setPreview(expression);
+      setExpression(answer);
+    } catch {
+      setPreview(expression);
+      setExpression("Error");
+    }
+  };
+
+  const buttons = [
+    ["AC", "+/-", "%", "/"],
+    ["7", "8", "9", "*"],
+    ["4", "5", "6", "-"],
+    ["1", "2", "3", "+"],
+    ["0", ".", "DEL", "="],
+  ];
+
+  return <div className="space-y-6"><Section eyebrow="Utility" title="Calculator" description="Quick calculations for marks, averages, percentages, and class planning." /><div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]"><Panel title="Basic Calculator" subtitle="Use operators, decimals, brackets, and percentages."><div className="rounded-[28px] border border-[#C0A062]/14 bg-[#080807] p-4 shadow-[inset_0_0_34px_rgba(192,160,98,0.05)] sm:p-5"><div className="mb-4 min-h-[132px] rounded-[24px] border border-[#C0A062]/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-4 text-right"><p className="min-h-6 truncate text-sm text-[#8F856F]">{preview}</p><p className="mt-4 break-all font-mono text-4xl font-semibold text-[#F5F0E6] sm:text-5xl">{expression}</p></div><div className="grid grid-cols-4 gap-2 sm:gap-3">{buttons.flat().map((label) => { const isOperator = ["/", "*", "-", "+", "="].includes(label); const isUtility = ["AC", "+/-", "%", "DEL"].includes(label); return <Button key={label} type="button" variant="outline" className={cn("h-14 rounded-2xl border-[#C0A062]/14 bg-white/[0.04] font-mono text-lg text-[#F5F0E6] hover:bg-white/[0.08] hover:text-[#F5F0E6] sm:h-16", isOperator && "border-[#C0A062]/30 bg-[#C0A062]/16 text-[#F2DEAE] hover:bg-[#C0A062]/24 hover:text-[#FFF3D1]", label === "=" && "bg-[#C0A062] text-[#16120B] hover:bg-[#D4B370] hover:text-[#16120B]", isUtility && "text-[#C9C1B0]")} onClick={() => { if (label === "AC") clear(); else if (label === "DEL") backspace(); else if (label === "+/-") toggleSign(); else if (label === "=") calculate(); else push(label); }}>{label === "*" ? "x" : label === "/" ? "÷" : label}</Button>; })}</div></div></Panel><Panel title="Useful Shortcuts" subtitle="Classroom-friendly examples"><div className="grid gap-3 sm:grid-cols-2"><CalculatorExample label="Average marks" expression="(78+84+91)/3" onUse={setExpression} /><CalculatorExample label="Attendance rate" expression="23/26*100" onUse={setExpression} /><CalculatorExample label="10% improvement" expression="68+68*10%" onUse={setExpression} /><CalculatorExample label="Weighted score" expression="82*0.6+91*0.4" onUse={setExpression} /></div><div className="mt-5 rounded-2xl border border-[#C0A062]/12 bg-white/[0.03] p-4 text-sm leading-6 text-[#A7A093]">Tip: Percent works as a postfix operator, so <span className="font-mono text-[#E7D19A]">10%</span> becomes <span className="font-mono text-[#E7D19A]">0.1</span>.</div></Panel></div></div>;
+}
+
+function CalculatorExample({ label, expression, onUse }: { label: string; expression: string; onUse: (expression: string) => void }) {
+  return <button type="button" onClick={() => onUse(expression)} className="rounded-2xl border border-[#C0A062]/12 bg-white/[0.03] p-4 text-left transition hover:border-[#C0A062]/28 hover:bg-white/[0.06]"><p className="text-sm font-medium text-[#F5F0E6]">{label}</p><p className="mt-2 font-mono text-sm text-[#E7D19A]">{expression}</p></button>;
+}
+
 function SettingsPage({ settingsDraft, setSettingsDraft, saveSettings, exportCsv, exportBackup, resetDemo, deleteAccount }: { settingsDraft: ClassSettings; setSettingsDraft: React.Dispatch<React.SetStateAction<ClassSettings>>; saveSettings: () => void; exportCsv: () => void; exportBackup: () => void; resetDemo: () => void; deleteAccount: () => void }) { return <div className="space-y-6"><Section eyebrow="Configuration" title="Settings" description="Tune thresholds, export your working data, or restore the saved demo setup." /><div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]"><Panel title="Class Configuration" subtitle="Core identity and teacher ownership"><div className="grid gap-4 md:grid-cols-2"><Field label="School Name"><Input value={settingsDraft.schoolName} onChange={(e) => setSettingsDraft((c) => ({ ...c, schoolName: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Class Teacher"><Input value={settingsDraft.classTeacher} onChange={(e) => setSettingsDraft((c) => ({ ...c, classTeacher: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Class"><Input value={settingsDraft.className} onChange={(e) => setSettingsDraft((c) => ({ ...c, className: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Section"><Input value={settingsDraft.section} onChange={(e) => setSettingsDraft((c) => ({ ...c, section: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Term"><Input value={settingsDraft.term} onChange={(e) => setSettingsDraft((c) => ({ ...c, term: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field></div></Panel><Panel title="Thresholds & Actions" subtitle="Intervention controls and data utilities"><div className="space-y-4"><NumberField label="At-Risk Threshold" value={settingsDraft.atRiskThreshold} onChange={(value) => setSettingsDraft((c) => ({ ...c, atRiskThreshold: value }))} /><NumberField label="Attendance Threshold" value={settingsDraft.attendanceThreshold} onChange={(value) => setSettingsDraft((c) => ({ ...c, attendanceThreshold: value }))} /><NumberField label="Marks Threshold" value={settingsDraft.marksThreshold} onChange={(value) => setSettingsDraft((c) => ({ ...c, marksThreshold: value }))} /><Toggle label="Send parent alerts" checked={settingsDraft.sendAlerts} onChange={(checked) => setSettingsDraft((c) => ({ ...c, sendAlerts: checked }))} /><Toggle label="Weekly digest" checked={settingsDraft.weeklyDigest} onChange={(checked) => setSettingsDraft((c) => ({ ...c, weeklyDigest: checked }))} /><div className="grid gap-3 pt-2"><Button className="w-full rounded-full bg-sky-500 text-slate-950 hover:bg-sky-400 sm:w-auto" onClick={saveSettings}><Save className="mr-2 h-4 w-4" />Save Settings</Button><Button variant="outline" className="w-full rounded-full border-white/10 bg-transparent text-slate-200 hover:bg-white/10 sm:w-auto" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Export CSV</Button><Button variant="outline" className="w-full rounded-full border-white/10 bg-transparent text-slate-200 hover:bg-white/10 sm:w-auto" onClick={exportBackup}><FileSpreadsheet className="mr-2 h-4 w-4" />Backup JSON</Button><Button variant="outline" className="w-full rounded-full border-rose-400/20 bg-transparent text-rose-200 hover:bg-rose-400/10 sm:w-auto" onClick={resetDemo}>Reset to Saved Demo</Button><Button variant="outline" className="w-full rounded-full border-rose-500/35 bg-rose-500/10 text-rose-200 hover:bg-rose-500/18 sm:w-auto" onClick={deleteAccount}><Trash2 className="mr-2 h-4 w-4" />Delete Account</Button><p className="text-xs text-[#A79B84]">This permanently removes your login and synced class data from DataVista.</p></div></div></Panel></div></div>; }
 
 function Hero() { return <Card className="overflow-hidden rounded-[24px] border-[#C0A062]/14 bg-[linear-gradient(135deg,rgba(192,160,98,0.12),rgba(14,12,10,0.98)_46%,rgba(192,160,98,0.16))] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.4)] sm:rounded-[36px] sm:p-6 xl:p-8"><p className="text-[11px] uppercase tracking-[0.2em] text-[#C8B07A] sm:text-xs sm:tracking-[0.28em]">Command Center</p><h3 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight text-[#FFF7E8] sm:text-4xl xl:text-5xl">One place to see class performance, risk signals, and next actions.</h3><p className="mt-3 max-w-2xl text-sm leading-6 text-[#B9B09E] sm:mt-4 sm:text-base">DataVista 2.0 brings dashboard analytics, attendance control, predictions, and AI insights into one artifact.</p></Card>; }
@@ -267,3 +308,53 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function attendanceClass(status: AttendanceStatus) { if (status === "present") return "border-emerald-400/15 bg-emerald-400/10 text-emerald-200"; if (status === "leave") return "border-amber-400/15 bg-amber-400/10 text-amber-200"; return "border-rose-400/15 bg-rose-400/10 text-rose-200"; }
 function shortSubject(subject: string) { if (subject === "Social Studies") return "Social"; if (subject === "Mathematics") return "Math"; return subject; }
 function avg(values: number[]) { return values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0; }
+function formatCalculatorNumber(value: number) { return Number(value.toFixed(10)).toString(); }
+function evaluateCalculatorExpression(expression: string) {
+  const source = expression.replace(/\s/g, "");
+  if (!source || !/^[\d+\-*/().%]+$/.test(source)) throw new Error("Invalid expression");
+  let index = 0;
+
+  const peek = () => source[index];
+  const match = (char: string) => {
+    if (source[index] !== char) return false;
+    index += 1;
+    return true;
+  };
+  const parseExpression = (): number => {
+    let value = parseTerm();
+    while (peek() === "+" || peek() === "-") {
+      value = match("+") ? value + parseTerm() : value - parseTerm();
+    }
+    return value;
+  };
+  const parseTerm = (): number => {
+    let value = parseFactor();
+    while (peek() === "*" || peek() === "/") {
+      value = match("*") ? value * parseFactor() : value / parseFactor();
+    }
+    return value;
+  };
+  const parseFactor = (): number => {
+    if (match("+")) return parseFactor();
+    if (match("-")) return -parseFactor();
+
+    let value: number;
+    if (match("(")) {
+      value = parseExpression();
+      if (!match(")")) throw new Error("Missing closing bracket");
+    } else {
+      const start = index;
+      while (/\d|\./.test(peek() ?? "")) index += 1;
+      if (start === index) throw new Error("Expected number");
+      value = Number(source.slice(start, index));
+      if (Number.isNaN(value)) throw new Error("Invalid number");
+    }
+
+    while (match("%")) value /= 100;
+    return value;
+  };
+
+  const result = parseExpression();
+  if (index !== source.length || !Number.isFinite(result)) throw new Error("Invalid calculation");
+  return result;
+}
