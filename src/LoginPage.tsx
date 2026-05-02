@@ -295,9 +295,9 @@ export default function LoginPage({ onLogin }: Props) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08, duration: 0.45 }}
-              className="mb-4 flex h-[74px] w-[74px] items-center justify-center rounded-full border border-white/10 bg-white/[0.03] shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
+              className="mb-4 flex h-[80px] w-[80px] items-center justify-center rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.45)] overflow-hidden ring-1 ring-[#C0A062]/20 bg-black"
             >
-              <img src="/logo.png" alt="DataVista logo" className="h-12 w-12 rounded-full object-contain opacity-90" />
+              <img src="/logo.png" alt="DataVista logo" className="h-[135%] w-[135%] object-cover opacity-95" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 8 }}
