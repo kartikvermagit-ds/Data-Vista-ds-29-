@@ -15,10 +15,12 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="flex items-center justify-center h-9 w-9 overflow-hidden rounded-full ring-1 ring-[#C0A062]/20 bg-black shrink-0">
+          <div className="flex items-center justify-center h-10 w-10 overflow-hidden rounded-full ring-1 ring-[#C0A062]/20 bg-black shrink-0">
             <img src="/logo.png" className="h-[120%] w-[120%] object-cover" alt="DataVista Logo" />
           </div>
-          <img src="/header.png" alt="DataVista" className="h-5 w-auto object-contain mt-0.5" />
+          <div className="bg-black rounded-lg px-2.5 py-1.5 ring-1 ring-[#C0A062]/20 drop-shadow-md">
+            <img src="/header.png" alt="DataVista" className="h-7 w-auto object-contain" />
+          </div>
         </Link>
 
         <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl">
