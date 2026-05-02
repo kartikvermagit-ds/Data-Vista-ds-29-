@@ -149,6 +149,8 @@
   mix-blend-mode: screen;
   object-fit: contain;
   display: block;
+  transform: scaleX(1.2) scaleY(1.12);
+  transform-origin: left center;
 }
 
 html {
