@@ -295,10 +295,23 @@ export default function LoginPage({ onLogin }: Props) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08, duration: 0.45 }}
-              className="mb-4 flex items-center justify-center"
+              className="mb-4 flex h-[74px] w-[74px] items-center justify-center rounded-full border border-white/10 bg-white/[0.03] shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
             >
-              <img src="/header.png" alt="DataVista" className="h-24 w-auto object-contain opacity-95 drop-shadow-2xl transition-transform duration-300 hover:scale-[1.02]" />
+              <img src="/logo.png" alt="DataVista logo" className="h-12 w-12 rounded-full object-contain opacity-90" />
             </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileTap={{ scale: 0.94, y: 1 }}
+              transition={{ delay: 0.12, duration: 0.45 }}
+              className="obsidian-title cursor-pointer font-['Playfair_Display'] text-[2.35rem] font-bold uppercase tracking-[0.46em] transition-transform duration-300 hover:scale-[1.05] sm:text-[2.8rem]"
+              style={{ textShadow: "0 0 16px rgba(255,255,255,0.16)" }}
+            >
+              <span className="obsidian-title__text text-[#F8F8F8]">DATA VISTA</span>
+              <span aria-hidden="true" className="obsidian-title__shimmer">
+                DATA VISTA
+              </span>
+            </motion.h1>
             <div className="mt-4 h-px w-24 bg-gradient-to-r from-transparent via-[#C0A062] to-transparent opacity-80" />
             <p className="mt-4 text-[11px] uppercase tracking-[0.35em] text-[#EDEDED]/48">Class Performance Analyzer</p>
           </div>
