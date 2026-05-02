@@ -274,6 +274,8 @@ export default function LoginPage({ onLogin }: Props) {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0A0A] px-6 py-12 text-[#EDEDED]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(192,160,98,0.12),transparent_28%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_42%),linear-gradient(180deg,#050505_0%,#0A0A0A_42%,#070707_100%)]" />
+      <div className="absolute top-1/2 left-0 h-[800px] w-[800px] -translate-x-[60%] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
+      <div className="absolute top-1/2 right-0 h-[800px] w-[800px] translate-x-[60%] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_42%,rgba(0,0,0,0.62)_100%)]" />
       <div
         className="absolute inset-0 opacity-[0.045] mix-blend-soft-light"
