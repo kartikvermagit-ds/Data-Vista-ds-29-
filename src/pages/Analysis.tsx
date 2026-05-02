@@ -27,6 +27,32 @@ export default function Analysis() {
     setStudents(getStudents());
   }, []);
 
+  const handleGesture = useCallback((gesture: { categoryName: string }) => {
+    if (gesture.categoryName === "Open_Palm") {
+      setFocusIndex(index => (index + 1) % focusSections.length);
+      return;
+    }
+
+    if (gesture.categoryName === "Closed_Fist") {
+      setFocusIndex(index => (index - 1 + focusSections.length) % focusSections.length);
+      return;
+    }
+
+    if (gesture.categoryName === "Pointing_Up") {
+      setFocusIndex(1);
+      return;
+    }
+
+    if (gesture.categoryName === "Victory") {
+      setFocusIndex(2);
+    }
+  }, [focusSections]);
+
+  const { videoRef, isActive, isLoading, error, lastGesture, stop } = useCameraHandGestures({
+    enabled: students.length > 0,
+    onGesture: handleGesture,
+  });
+
   if (students.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
@@ -58,31 +84,6 @@ export default function Analysis() {
 
   const activeSection = focusSections[focusIndex];
 
-  const handleGesture = useCallback((gesture: { categoryName: string }) => {
-    if (gesture.categoryName === "Open_Palm") {
-      setFocusIndex(index => (index + 1) % focusSections.length);
-      return;
-    }
-
-    if (gesture.categoryName === "Closed_Fist") {
-      setFocusIndex(index => (index - 1 + focusSections.length) % focusSections.length);
-      return;
-    }
-
-    if (gesture.categoryName === "Pointing_Up") {
-      setFocusIndex(1);
-      return;
-    }
-
-    if (gesture.categoryName === "Victory") {
-      setFocusIndex(2);
-    }
-  }, [focusSections]);
-
-  const { videoRef, isActive, isLoading, error, lastGesture, stop } = useCameraHandGestures({
-    enabled: students.length > 0,
-    onGesture: handleGesture,
-  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
