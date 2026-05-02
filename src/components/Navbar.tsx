@@ -18,7 +18,7 @@ export default function Navbar() {
           <div className="flex items-center justify-center h-10 w-10 overflow-hidden rounded-full ring-1 ring-[#C0A062]/20 bg-black shrink-0">
             <img src="/logo.png" className="h-[120%] w-[120%] object-cover" alt="DataVista Logo" />
           </div>
-          <img src="/header.png" alt="DataVista" className="h-7 sm:h-8 w-auto object-contain invert hue-rotate-180 contrast-150 brightness-125 mix-blend-screen opacity-90 ml-1" />
+          <img src="/header.png" alt="DataVista" className="header h-7 sm:h-8 ml-1" />
         </Link>
 
         <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl">

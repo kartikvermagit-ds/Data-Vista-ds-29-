@@ -142,6 +142,15 @@
   object-fit: contain;
 }
 
+.header {
+  font-size: 14px;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  mix-blend-mode: screen;
+  object-fit: contain;
+  display: block;
+}
+
 html {
   scroll-behavior: smooth;
   width: 100%;
