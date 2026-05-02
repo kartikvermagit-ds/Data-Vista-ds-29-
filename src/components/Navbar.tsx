@@ -15,10 +15,7 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/25">
-            <img src="/logo.png" className="w-5 h-5" />
-          </div>
-          <span className="font-extrabold text-lg tracking-tight gradient-text">DataVista</span>
+          <img src="/header.png" className="h-8 w-auto object-contain drop-shadow-md" alt="DataVista Header" />
         </Link>
 
         <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl">
