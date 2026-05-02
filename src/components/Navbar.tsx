@@ -16,7 +16,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="flex items-center justify-center h-9 w-9 overflow-hidden rounded-full ring-1 ring-[#C0A062]/20 bg-black">
-            <img src="/logo.png" className="h-[135%] w-[135%] object-cover" alt="DataVista Logo" />
+            <img src="/logo.png" className="h-[120%] w-[120%] object-cover" alt="DataVista Logo" />
           </div>
           <span className="font-extrabold text-lg tracking-tight gradient-text">DataVista</span>
         </Link>

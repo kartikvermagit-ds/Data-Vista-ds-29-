@@ -45,7 +45,7 @@ export default function Dashboard() {
 
         <div className="text-center max-w-md">
           <div className="w-24 h-24 rounded-full overflow-hidden ring-1 ring-[#C0A062]/20 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/30 bg-black">
-            <img src="/logo.png" alt="DataVista Logo" className="w-[135%] h-[135%] object-cover" />
+            <img src="/logo.png" alt="DataVista Logo" className="w-[120%] h-[120%] object-cover" />
           </div>
           <h1 className="text-4xl font-extrabold mb-3 gradient-text">Welcome to DataVista</h1>
           <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
