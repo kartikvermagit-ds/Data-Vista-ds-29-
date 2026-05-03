@@ -1286,14 +1286,16 @@ function evaluateCalculatorExpression(expression: string) {
   const parseExpression = (): number => {
     let value = parseTerm();
     while (peek() === "+" || peek() === "-") {
-      value = match("+") ? value + parseTerm() : value - parseTerm();
+      if (match("+")) value += parseTerm();
+      else if (match("-")) value -= parseTerm();
     }
     return value;
   };
   const parseTerm = (): number => {
     let value = parseFactor();
     while (peek() === "*" || peek() === "/") {
-      value = match("*") ? value * parseFactor() : value / parseFactor();
+      if (match("*")) value *= parseFactor();
+      else if (match("/")) value /= parseFactor();
     }
     return value;
   };
