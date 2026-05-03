@@ -1,5 +1,5 @@
 import "@google/model-viewer";
-import type { Teacher } from "./lib/auth"; import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { Teacher } from "./lib/auth"; import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, Calculator, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -254,16 +254,16 @@ function CalculatorPage() {
   const [expression, setExpression] = useState("0");
   const [preview, setPreview] = useState("");
 
-  const push = (value: string) => {
+  const push = useCallback((value: string) => {
     setExpression((current) => {
       const next = current === "0" || current === "Error" ? value : `${current}${value}`;
       return next.replace(/([+\-*/])([+\-*/])+$/g, "$2");
     });
-  };
-  const clear = () => { setExpression("0"); setPreview(""); };
-  const backspace = () => setExpression((current) => current.length > 1 && current !== "Error" ? current.slice(0, -1) : "0");
-  const toggleSign = () => setExpression((current) => current.startsWith("-") ? current.slice(1) || "0" : current === "0" ? "-0" : `-${current}`);
-  const calculate = () => {
+  }, []);
+  const clear = useCallback(() => { setExpression("0"); setPreview(""); }, []);
+  const backspace = useCallback(() => setExpression((current) => current.length > 1 && current !== "Error" ? current.slice(0, -1) : "0"), []);
+  const toggleSign = useCallback(() => setExpression((current) => current.startsWith("-") ? current.slice(1) || "0" : current === "0" ? "-0" : `-${current}`), []);
+  const calculate = useCallback(() => {
     try {
       const answer = formatCalculatorNumber(evaluateCalculatorExpression(expression));
       setPreview(expression);
@@ -272,7 +272,44 @@ function CalculatorPage() {
       setPreview(expression);
       setExpression("Error");
     }
-  };
+  }, [expression]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const { code, key } = e;
+
+      // Digits: main keyboard and numpad
+      if (/^(Digit|Numpad)[0-9]$/.test(code)) {
+        e.preventDefault();
+        push(key === "Enter" ? "=" : /^Numpad\d$/.test(code) ? code.replace("Numpad", "") : key);
+        return;
+      }
+
+      switch (code) {
+        case "NumpadAdd":       e.preventDefault(); push("+"); break;
+        case "NumpadSubtract":  e.preventDefault(); push("-"); break;
+        case "NumpadMultiply":  e.preventDefault(); push("*"); break;
+        case "NumpadDivide":    e.preventDefault(); push("/"); break;
+        case "NumpadDecimal":   e.preventDefault(); push("."); break;
+        case "NumpadEnter":
+        case "Enter":           e.preventDefault(); calculate(); break;
+        case "Backspace":       e.preventDefault(); backspace(); break;
+        case "Escape":          e.preventDefault(); clear(); break;
+        default:
+          // Main keyboard operators and decimal
+          if (key === "+" || key === "-" || key === "*" || key === "/") { e.preventDefault(); push(key); }
+          else if (key === ".") { e.preventDefault(); push("."); }
+          else if (key === "%" ) { e.preventDefault(); push("%"); }
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [push, clear, backspace, calculate]);
 
   const buttons = [
     ["AC", "+/-", "%", "/"],

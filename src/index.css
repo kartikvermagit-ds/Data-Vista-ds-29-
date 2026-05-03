@@ -147,10 +147,11 @@
   letter-spacing: 2px;
   white-space: nowrap;
   mix-blend-mode: screen;
-  object-fit: contain;
   display: block;
-  transform: scaleX(1.2) scaleY(1.12);
-  transform-origin: left center;
+  max-width: none;        /* override global img { max-width: 100% } */
+  width: 120%;            /* stretch 20% wider than natural aspect ratio */
+  height: 112%;           /* stretch 12% taller (works with Tailwind h-* on the element) */
+  object-fit: fill;       /* fill the given width/height without preserving aspect ratio */
 }
 
 html {
@@ -286,7 +287,7 @@ model-viewer {
   box-shadow: 0 12px 40px -12px hsl(var(--primary) / 0.2);
 }
 
-/* Animated background blobs */
+
 @keyframes blob {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33% { transform: translate(30px, -40px) scale(1.1); }
