@@ -13,6 +13,8 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { EXAMS, SUBJECTS, calculateClassHealth, createAssignmentFromForm, createStudentFromForm, exportBackupJson, exportStudentsCsv, fetchLatestStateForTeacher, getGradeFromScore, getOverallScore, loadState, loadStateForTeacher, markTodayForStudent, resetStateForTeacher, saveStateForTeacher, summarizeAttendance, type AttendanceStatus, type ClassSettings, type DataVistaState, type ExamName, type LectureStatus, type LectureSlot, type Student, type Subject, type TimetableDay } from "@/lib/datavista";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { DevelopersFooter } from "./components/DevelopersFooter";
+
 
 type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "timetable" | "compare" | "calculator" | "settings";
 type RiskFilter = "All" | "Low" | "Medium" | "High";
@@ -319,7 +321,9 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
           {active === "compare" && isElevated ? <ComparePage myClass={state} role={role} schoolName={state.settings.schoolName} /> : null}
           {active === "calculator" ? <CalculatorPage /> : null}
           {active === "settings" ? <SettingsPage settingsDraft={settingsDraft} setSettingsDraft={setSettingsDraft} saveSettings={saveSettings} exportCsv={exportCsv} exportBackup={exportBackup} resetDemo={resetDemo} deleteAccount={deleteAccount} /> : null}
+          <DevelopersFooter />
         </main>
+
       </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}><DialogContent className="max-w-2xl rounded-[28px] border-[#C0A062]/18 bg-slate-50 dark:bg-[#0E0C0A] text-slate-800 dark:text-[#EDEDED]"><DialogHeader><DialogTitle className="text-2xl text-slate-900 dark:text-[#F5E8C8]">Add Student</DialogTitle><DialogDescription className="text-[#A79B84]">Create a new profile with enough data to place the student into every analytics view.</DialogDescription></DialogHeader><div className="grid gap-4 md:grid-cols-2">{(["name", "guardianName", "phone", "email", "marksAverage", "attendanceRate", "assignmentCompletion", "participation"] as const).map((field) => <Field key={field} label={field} error={errors[field]}><Input type={field.includes("Rate") || field.includes("Average") || field === "participation" || field === "assignmentCompletion" ? "number" : "text"} value={form[field]} onChange={(e) => setForm((c) => ({ ...c, [field]: e.target.value }))} className="h-11 rounded-2xl border-[#2A241A] bg-white dark:bg-[#121212] text-slate-800 dark:text-[#EDEDED] placeholder:text-[#5F584C] focus-visible:ring-[#C0A062]/35" /></Field>)}</div><DialogFooter><Button variant="outline" className="rounded-full border-[#C0A062]/18 bg-transparent text-slate-700 dark:text-[#E7DFC9] hover:bg-[#C0A062]/10" onClick={() => setAddOpen(false)}>Cancel</Button><Button className="rounded-full bg-[#C0A062] text-slate-100 dark:text-[#16120B] hover:bg-[#D4B370]" onClick={addStudent}><Plus className="mr-2 h-4 w-4" />Add Student</Button></DialogFooter></DialogContent></Dialog>

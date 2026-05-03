@@ -4,6 +4,8 @@ import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import type { Teacher } from "./lib/auth";
 import { teacherFromAuthUser } from "./lib/auth";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
+import { DevelopersFooter } from "./components/DevelopersFooter";
+
 
 type TeacherAccount = Teacher & { password: string };
 type Props = { onLogin: (teacher: Teacher, options?: { showIntro?: boolean }) => void };
@@ -528,7 +530,11 @@ export default function LoginPage({ onLogin }: Props) {
             </form>
           )}
         </div>
+        <div className="mt-8">
+          <DevelopersFooter />
+        </div>
       </motion.div>
+
     </div>
   );
 }
