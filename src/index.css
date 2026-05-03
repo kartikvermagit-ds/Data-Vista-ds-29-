@@ -154,6 +154,77 @@
   object-fit: fill;       /* fill the given width/height without preserving aspect ratio */
 }
 
+/* ─── Light mode theme ─────────────────────────────────────────────── */
+html.light {
+  /* App shell */
+  --dv-bg:          #f5efe2;
+  --dv-sidebar-bg:  rgba(255,250,240,0.92);
+  --dv-main-bg:     rgba(255,252,246,0.88);
+  --dv-border:      rgba(192,160,98,0.30);
+  --dv-surface:     rgba(255,248,232,0.70);
+
+  /* Text */
+  --dv-text-primary:   #1a1510;
+  --dv-text-secondary: #5a4e3a;
+  --dv-text-muted:     #8a7a62;
+  --dv-text-accent:    #C0A062;
+
+  color-scheme: light;
+}
+
+/* Apply light overrides to specific selectors */
+html.light body {
+  background: #f5efe2;
+}
+
+html.light .dv-app-root {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(192,160,98,0.18), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(255,255,255,0.55), transparent 20%),
+    linear-gradient(180deg, #f5efe2 0%, #fdf7ed 48%, #f8f0e0 100%);
+  color: #1a1510;
+}
+
+html.light .dv-sidebar {
+  background: rgba(255,250,240,0.94);
+  border-color: rgba(192,160,98,0.28);
+  box-shadow: 0 30px 90px rgba(192,160,98,0.12);
+}
+
+html.light .dv-main {
+  background: rgba(255,252,246,0.90);
+  border-color: rgba(192,160,98,0.20);
+  box-shadow: 0 30px 90px rgba(192,160,98,0.08);
+}
+
+html.light .dv-panel {
+  background: rgba(255,250,235,0.60);
+  border-color: rgba(192,160,98,0.22);
+}
+
+html.light .dv-nav-item {
+  color: #3d3322;
+}
+
+html.light .dv-nav-item:hover {
+  background: rgba(192,160,98,0.10);
+  color: #1a1510;
+}
+
+/* ─── Universal smooth theme transition ────────────────────────────── */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.28s;
+  transition-timing-function: ease;
+}
+
+/* But DON'T slow down interactive animations */
+button, a, [role="button"] {
+  transition-duration: 0.15s;
+}
+
 html {
   scroll-behavior: smooth;
   width: 100%;

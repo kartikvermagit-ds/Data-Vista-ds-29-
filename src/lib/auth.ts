@@ -8,6 +8,16 @@ export type Teacher = {
   email?: string;
 };
 
+/** Application-level role derived from the teacher's position string. */
+export type UserRole = "teacher" | "hod" | "dean";
+
+export function getRoleFromPosition(position: string): UserRole {
+  const p = position.toLowerCase();
+  if (p.includes("dean") || p.includes("principal") || p.includes("director")) return "dean";
+  if (p.includes("hod") || p.includes("head of department") || p.includes("head")) return "hod";
+  return "teacher";
+}
+
 export function teacherFromAuthUser(user: User): Teacher {
   const metadata = user.user_metadata ?? {};
   const fallbackEmail = user.email ?? "";

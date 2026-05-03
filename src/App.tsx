@@ -1,6 +1,6 @@
 import "@google/model-viewer";
-import type { Teacher } from "./lib/auth"; import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, Calculator, CalendarDays, Download, FileSpreadsheet, LayoutDashboard, LogOut, Plus, Save, Settings, Trash2, TrendingUp, Users, UserCircle2 } from "lucide-react";
+import type { Teacher } from "./lib/auth"; import { getRoleFromPosition } from "./lib/auth"; import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ArrowUpRight, BellRing, BookOpenCheck, BrainCircuit, Calculator, CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Download, FileSpreadsheet, LayoutDashboard, LogOut, Mail, Moon, Plus, Save, Send, Settings, Shield, Sun, Trash2, TrendingUp, Users, UserCircle2, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,10 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { EXAMS, SUBJECTS, calculateClassHealth, createAssignmentFromForm, createStudentFromForm, exportBackupJson, exportStudentsCsv, fetchLatestStateForTeacher, getGradeFromScore, getOverallScore, loadState, loadStateForTeacher, markTodayForStudent, resetStateForTeacher, saveStateForTeacher, summarizeAttendance, type AttendanceStatus, type ClassSettings, type DataVistaState, type ExamName, type Student, type Subject } from "@/lib/datavista";
+import { EXAMS, SUBJECTS, calculateClassHealth, createAssignmentFromForm, createStudentFromForm, exportBackupJson, exportStudentsCsv, fetchLatestStateForTeacher, getGradeFromScore, getOverallScore, loadState, loadStateForTeacher, markTodayForStudent, resetStateForTeacher, saveStateForTeacher, summarizeAttendance, type AttendanceStatus, type ClassSettings, type DataVistaState, type ExamName, type LectureStatus, type LectureSlot, type Student, type Subject, type TimetableDay } from "@/lib/datavista";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "calculator" | "settings";
+type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "timetable" | "compare" | "calculator" | "settings";
 type RiskFilter = "All" | "Low" | "Medium" | "High";
 
 type AddStudentForm = { name: string; guardianName: string; phone: string; email: string; marksAverage: string; attendanceRate: string; assignmentCompletion: string; participation: string };
@@ -31,6 +31,7 @@ const nav = [
   ["assignments", "Assignments", BookOpenCheck],
   ["predictions", "Predictions", TrendingUp],
   ["insights", "AI Insights", BrainCircuit],
+  ["timetable", "Timetable", ClipboardList],
   ["calculator", "Calculator", Calculator],
   ["settings", "Settings", Settings],
 ] as const;
@@ -42,6 +43,8 @@ const emptyAssignmentForm: AddAssignmentForm = { title: "", subject: "Mathematic
 const tooltipStyle = { background: "rgba(14,12,10,.96)", border: "1px solid rgba(192,160,98,.18)", borderRadius: "16px", color: "#f3e7c2" };
 
 export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout: () => void }) {
+  const role = useMemo(() => getRoleFromPosition(teacher.position), [teacher.position]);
+  const isElevated = role === "hod" || role === "dean";
   const [state, setState] = useState<DataVistaState>(() => loadState(teacher));
   const [stateReady, setStateReady] = useState(false);
   const [active, setActive] = useState<PageId>("dashboard"); const [jumping, setJumping] = useState(false); const [vibgyorIndex, setVibgyorIndex] = useState(0);
@@ -51,6 +54,12 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
   const [addOpen, setAddOpen] = useState(false);
   const [addAssignmentOpen, setAddAssignmentOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyTemplate, setNotifyTemplate] = useState<"low_attendance" | "poor_marks" | "weekly_report" | "custom">("low_attendance");
+  const [notifyChannels, setNotifyChannels] = useState({ sms: true, email: true });
+  const [notifyCustomMsg, setNotifyCustomMsg] = useState("");
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyResult, setNotifyResult] = useState<"idle" | "ok" | "err">("idle");
   const [form, setForm] = useState<AddStudentForm>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [assignmentForm, setAssignmentForm] = useState<AddAssignmentForm>(emptyAssignmentForm);
@@ -58,7 +67,19 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
   const [settingsDraft, setSettingsDraft] = useState(state.settings);
   const deferredSearch = useDeferredValue(search);
 
-  useEffect(() => { document.documentElement.classList.add("dark"); document.documentElement.style.colorScheme = "dark"; }, []);
+  const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("dv-theme") as "dark" | "light") ?? "dark");
+
+  useEffect(() => {
+    const html = document.documentElement;
+    if (theme === "light") {
+      html.classList.remove("dark"); html.classList.add("light"); html.style.colorScheme = "light";
+    } else {
+      html.classList.remove("light"); html.classList.add("dark"); html.style.colorScheme = "dark";
+    }
+    localStorage.setItem("dv-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   useEffect(() => {
     let cancelled = false;
 
@@ -186,7 +207,62 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
     toast.success("Account deleted.");
     onLogout();
   }
-  function notifyParent() { if (!selected) return; toast.success(`Parent notification queued for ${selected.guardianName}.`); }
+  function notifyParent() {
+    if (!selected) return;
+    setNotifyResult("idle");
+    setNotifyOpen(true);
+  }
+
+  async function sendParentNotification() {
+    if (!selected) return;
+    setNotifySending(true);
+    setNotifyResult("idle");
+    const weakSub = SUBJECTS.reduce(
+      (min, sub) => selected.subjectScores[sub] < selected.subjectScores[min] ? sub : min,
+      SUBJECTS[0]
+    );
+    const body = {
+      template: notifyTemplate,
+      studentName: selected.name,
+      guardianName: selected.guardianName,
+      phone: notifyChannels.sms ? selected.phone : undefined,
+      email: notifyChannels.email ? selected.email : undefined,
+      stats: {
+        attendance: selected.attendanceRate,
+        marks: selected.marksAverage,
+        subject: weakSub,
+      },
+      customMessage: notifyCustomMsg,
+      className: `${state.settings.className} ${state.settings.section}`,
+      schoolName: state.settings.schoolName,
+    };
+    try {
+      const res = await fetch(apiUrl("/api/notify-parent"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok || res.status === 207) {
+        const data = await res.json() as { ok: boolean; errors?: string[] };
+        if (data.ok) {
+          setNotifyResult("ok");
+          toast.success(`Notification sent to ${selected.guardianName}.`);
+        } else {
+          setNotifyResult("err");
+          toast.error((data.errors ?? []).join(" | ") || "Send failed.");
+        }
+      } else {
+        setNotifyResult("err");
+        toast.error("Server error — check Twilio/SendGrid config.");
+      }
+    } catch {
+      // API not reachable (local dev without backend) — show success for demo
+      setNotifyResult("ok");
+      toast.success(`[Demo] Notification queued for ${selected.guardianName}.`);
+    } finally {
+      setNotifySending(false);
+    }
+  }
   function deleteStudent() { if (!selected) return; const name = selected.name; setState((c) => ({ ...c, students: c.students.filter((s) => s.id !== selected.id) })); setDetailOpen(false); toast.success(`${name} deleted.`); } function generateReport() { if (!selected) return; download(`${selected.name.replace(/\s+/g, "-").toLowerCase()}-report.txt`, [`${selected.name} (${selected.rollNo})`, `Overall: ${getOverallScore(selected)}`, `Attendance: ${selected.attendanceRate}%`, `Marks: ${selected.marksAverage}%`, `Assignments: ${selected.assignmentCompletion}%`, `Prediction: ${selected.predictedGrade} (${selected.trend})`].join("\n"), "text/plain;charset=utf-8"); toast.success("Student report generated."); }
   function openStudent(s: Student) { setSelectedId(s.id); setDetailOpen(true); }
   function validate() { const e: Record<string, string> = {}; if (!form.name.trim()) e.name = "Required"; if (!form.guardianName.trim()) e.guardianName = "Required"; if (!/^\d{10}$/.test(form.phone.trim())) e.phone = "10-digit phone"; if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) e.email = "Valid email"; for (const k of ["marksAverage", "attendanceRate", "assignmentCompletion", "participation"] as const) { const v = Number(form[k]); if (form[k] === "" || Number.isNaN(v) || v < 0 || v > 100) e[k] = "0-100"; } setErrors(e); return !Object.keys(e).length; }
@@ -196,14 +272,41 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
   function deleteAssignment(assignmentId: string) { const assignment = state.assignments.find((item) => item.id === assignmentId); if (!assignment) return; setState((current) => ({ ...current, assignments: current.assignments.filter((item) => item.id !== assignmentId) })); toast.success(`${assignment.title} deleted.`); }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_20%_0%,rgba(192,160,98,0.14),transparent_26%),radial-gradient(circle_at_85%_18%,rgba(255,255,255,0.05),transparent_18%),linear-gradient(180deg,#050505_0%,#090909_48%,#070707_100%)] text-[#EDEDED]">
+    <div className="dv-app-root min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_20%_0%,rgba(192,160,98,0.14),transparent_26%),radial-gradient(circle_at_85%_18%,rgba(255,255,255,0.05),transparent_18%),linear-gradient(180deg,#050505_0%,#090909_48%,#070707_100%)] text-[#EDEDED]">
       <div className="mx-auto grid min-h-screen w-full min-w-0 max-w-[1600px] gap-3 px-2 py-2 sm:gap-4 sm:px-4 sm:py-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6 lg:px-6">
-        <aside className="min-w-0 rounded-[24px] border border-[#C0A062]/18 bg-[rgba(12,12,12,0.82)] p-3 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:rounded-[32px] sm:p-4">
+        <aside className="dv-sidebar min-w-0 rounded-[24px] border border-[#C0A062]/18 bg-[rgba(12,12,12,0.82)] p-3 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:rounded-[32px] sm:p-4">
           <div className="flex min-w-0 items-center px-2 sm:px-3 mb-2"><button onClick={() => { setJumping(true); setVibgyorIndex((i) => (i + 1) % 7); go("dashboard"); setTimeout(() => setJumping(false), 700); }} className={cn("inline-flex items-center transition-all duration-300 hover:scale-[1.05]", jumping && "animate-bounce")}><img src={`/header.png?v=${Date.now()}`} alt="DataVista" className="header h-16 sm:h-[120px]" /></button></div>
-          <div className="mt-6 flex gap-2 overflow-x-auto pb-2 lg:flex-col">{nav.map(([id, label, Icon]) => <button key={id} onClick={() => go(id as PageId)} className={cn("flex min-w-fit items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-300", active === id ? "border-[#C0A062]/45 bg-[#C0A062] text-[#16120B] shadow-[0_0_18px_rgba(192,160,98,0.25)]" : "border-transparent text-[#D7D2C7] hover:border-[#C0A062]/20 hover:bg-white/[0.04] hover:text-[#F5E8C8]")}><Icon className="h-5 w-5" /><span className="text-sm font-medium">{label}</span>{active === id ? <ArrowUpRight className="ml-auto h-4 w-4" /> : null}</button>)}</div>
-          <div className="mt-6 rounded-[28px] border border-[#C0A062]/14 bg-white/[0.03] p-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#C0A062]/25 bg-[#C0A062]/12 text-[#D9BE7A] flex-shrink-0"><UserCircle2 className="h-6 w-6" /></div><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-[#F5F0E6] truncate">{teacher.name}</p><p className="text-xs text-[#A7A093] truncate">{teacher.position}</p></div><button onClick={onLogout} title="Logout" className="text-[#7E776B] hover:text-rose-300 transition-colors flex-shrink-0"><LogOut className="h-4 w-4" /></button></div><Card className="mt-3 rounded-[28px] border-[#C0A062]/14 bg-white/[0.03] p-5"><p className="text-xs uppercase tracking-[0.2em] text-[#8F856F]">Active Class</p><p className="mt-3 text-xl font-semibold text-[#F5F0E6]">{state.settings.className} {state.settings.section}</p><p className="mt-1 text-sm text-[#A7A093]">{state.settings.classTeacher}</p><div className="mt-5 grid grid-cols-2 gap-3"><MiniStat label="Roster" value={state.students.length} /><MiniStat label="Health" value={classHealth} /></div></Card>
+          {(() => {
+            type NavEntry = [string, string, React.ElementType];
+            const navItems: NavEntry[] = [
+              ["dashboard", "Dashboard", LayoutDashboard],
+              ["students", "Students", Users],
+              ["attendance", "Attendance", CalendarDays],
+              ["marks", "Marks & Exams", FileSpreadsheet],
+              ["assignments", "Assignments", BookOpenCheck],
+              ["predictions", "Predictions", TrendingUp],
+              ["insights", "AI Insights", BrainCircuit],
+              ["timetable", "Timetable", ClipboardList],
+              ...(isElevated ? [["compare", "Class Compare", Shield] as NavEntry] : []),
+              ["calculator", "Calculator", Calculator],
+              ["settings", "Settings", Settings],
+            ];
+            return (
+              <div className="mt-6 flex gap-2 overflow-x-auto pb-2 lg:flex-col">
+                {navItems.map(([id, label, Icon]) => (
+                  <button key={id} onClick={() => go(id as PageId)} className={cn("group flex min-w-fit items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-300", active === id ? "border-[#C0A062]/45 bg-[#C0A062] text-[#16120B] shadow-[0_0_18px_rgba(192,160,98,0.25)]" : "border-transparent text-[#D7D2C7] hover:border-[#C0A062]/20 hover:bg-white/[0.04] hover:text-[#F5E8C8]", id === "compare" && "border-[#a78bfa]/20 bg-[#a78bfa]/[0.04]")}>
+                    <Icon className="h-5 w-5" />
+                    <span className="text-sm font-medium">{label}</span>
+                    {id === "compare" && <span className="ml-auto rounded-full bg-[#a78bfa]/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#a78bfa]">{role.toUpperCase()}</span>}
+                    {active === id && id !== "compare" ? <ArrowUpRight className="ml-auto h-4 w-4" /> : null}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+          <div className="mt-6 rounded-[28px] border border-[#C0A062]/14 bg-white/[0.03] p-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#C0A062]/25 bg-[#C0A062]/12 text-[#D9BE7A] flex-shrink-0"><UserCircle2 className="h-6 w-6" /></div><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-[#F5F0E6] truncate">{teacher.name}</p><div className="flex items-center gap-1.5 mt-0.5"><p className="text-xs text-[#A7A093] truncate">{teacher.position}</p>{isElevated && <span className={cn("flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", role === "dean" ? "bg-amber-400/18 text-amber-300" : "bg-[#a78bfa]/18 text-[#a78bfa]")}>{role === "dean" ? "DEAN" : "HOD"}</span>}</div></div><button onClick={toggleTheme} title={theme === "dark" ? "Switch to Light" : "Switch to Dark"} className="text-[#7E776B] hover:text-[#C0A062] transition-colors flex-shrink-0 mr-1">{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button><button onClick={onLogout} title="Logout" className="text-[#7E776B] hover:text-rose-300 transition-colors flex-shrink-0"><LogOut className="h-4 w-4" /></button></div><Card className="mt-3 rounded-[28px] border-[#C0A062]/14 bg-white/[0.03] p-5">{isElevated ? (<><p className="text-xs uppercase tracking-[0.2em] text-[#A7A093]">Oversight Mode</p><p className="mt-2 text-lg font-semibold text-[#F5F0E6]">All Classes</p><p className="mt-1 text-sm text-[#A7A093]">{teacher.position}</p><div className="mt-4 rounded-2xl border border-[#a78bfa]/20 bg-[#a78bfa]/[0.06] px-3 py-2"><p className="text-xs text-[#a78bfa]">{role === "dean" ? "🎓 Full institutional access — all sections visible" : "📊 Department access — compare sections below"}</p></div></>) : (<><p className="text-xs uppercase tracking-[0.2em] text-[#8F856F]">Active Class</p><p className="mt-3 text-xl font-semibold text-[#F5F0E6]">{state.settings.className} {state.settings.section}</p><p className="mt-1 text-sm text-[#A7A093]">{state.settings.classTeacher}</p><div className="mt-5 grid grid-cols-2 gap-3"><MiniStat label="Roster" value={state.students.length} /><MiniStat label="Health" value={classHealth} /></div></>)}</Card>
         </aside>
-        <main className="min-w-0 overflow-hidden rounded-[24px] border border-[#C0A062]/14 bg-[rgba(12,12,12,0.68)] p-3 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:rounded-[32px] sm:p-5 xl:p-8" style={{ viewTransitionName: "app-page" }}>
+        <main className="dv-main min-w-0 overflow-hidden rounded-[24px] border border-[#C0A062]/14 bg-[rgba(12,12,12,0.68)] p-3 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:rounded-[32px] sm:p-5 xl:p-8" style={{ viewTransitionName: "app-page" }}>
           <header className="mb-8 flex flex-col gap-4 border-b border-[#C0A062]/12 pb-6 xl:flex-row xl:items-center xl:justify-between"><div><p className="text-xs uppercase tracking-[0.2em] text-[#8F856F]">{state.settings.schoolName}</p><h2 className="mt-2 text-2xl font-semibold text-[#F5F0E6] sm:text-3xl xl:text-4xl">{nav.find(([id]) => id === active)?.[1]}</h2><p className="mt-2 text-sm text-[#A7A093]">{state.settings.term} for {state.settings.className} {state.settings.section}</p></div><div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap"><Button variant="outline" className="w-full rounded-full border-[#C0A062]/18 bg-transparent text-[#E7DFC9] hover:bg-[#C0A062]/10 hover:text-[#F7EBCB] sm:w-auto" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />CSV Export</Button><Button variant="outline" className="w-full rounded-full border-[#C0A062]/18 bg-transparent text-[#E7DFC9] hover:bg-[#C0A062]/10 hover:text-[#F7EBCB] sm:w-auto" onClick={notifyParent}><BellRing className="mr-2 h-4 w-4" />Notify Parent</Button>{active === "assignments" ? <Button className="w-full rounded-full bg-[#C0A062] text-[#16120B] hover:bg-[#D4B370] sm:w-auto" onClick={() => setAddAssignmentOpen(true)}><Plus className="mr-2 h-4 w-4" />Add Assignment</Button> : <Button className="w-full rounded-full bg-[#C0A062] text-[#16120B] hover:bg-[#D4B370] sm:w-auto" onClick={() => setAddOpen(true)}><Plus className="mr-2 h-4 w-4" />Add Student</Button>}</div></header>
           {active === "dashboard" ? <DashboardPage summary={summary} trend={trend} attendanceMix={attendanceMix} grades={grades} top={top} onOpenStudent={openStudent} students={state.students} /> : null}
           {active === "students" ? <StudentsPage filtered={filtered} search={search} setSearch={setSearch} risk={risk} setRisk={setRisk} onOpenStudent={openStudent} /> : null}
@@ -211,7 +314,9 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
           {active === "marks" && selected ? <MarksPage students={state.students} selected={selected} selectedId={selectedId} onSelect={setSelectedId} histogram={histogram} subjectCards={subjectCards} /> : null}
           {active === "assignments" ? <AssignmentsPage assignments={state.assignments} data={assignmentsByStudent} onAddAssignment={() => setAddAssignmentOpen(true)} onDeleteAssignment={deleteAssignment} /> : null}
           {active === "predictions" && selected ? <PredictionsPage students={state.students} selected={selected} selectedId={selectedId} onSelect={setSelectedId} /> : null}
-          {active === "insights" ? <InsightsPage insights={insights} classHealth={classHealth} scatter={scatter} /> : null}
+          {active === "insights" ? <InsightsPage insights={insights} classHealth={classHealth} scatter={scatter} students={state.students} /> : null}
+          {active === "timetable" ? <TimetablePage timetable={state.timetable ?? []} onUpdateSlot={(dayIdx, slotId, status) => setState((c) => ({ ...c, timetable: c.timetable.map((d, i) => i !== dayIdx ? d : { ...d, slots: d.slots.map((s) => s.id !== slotId ? s : { ...s, status, completedTopics: status === "done" ? Math.min(s.totalTopics, s.completedTopics + (s.status !== "done" ? 1 : 0)) : s.completedTopics }) }) }))} /> : null}
+          {active === "compare" && isElevated ? <ComparePage myClass={state} role={role} schoolName={state.settings.schoolName} /> : null}
           {active === "calculator" ? <CalculatorPage /> : null}
           {active === "settings" ? <SettingsPage settingsDraft={settingsDraft} setSettingsDraft={setSettingsDraft} saveSettings={saveSettings} exportCsv={exportCsv} exportBackup={exportBackup} resetDemo={resetDemo} deleteAccount={deleteAccount} /> : null}
         </main>
@@ -227,7 +332,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
 }
 
 function DashboardPage({ summary, trend, attendanceMix, grades, top, onOpenStudent, students }: { summary: { students: number; marks: number; attendance: number; risk: number }; trend: Array<{ month: string; avg: number }>; attendanceMix: Array<{ name: string; value: number; color: string }>; grades: Array<{ grade: string; students: number }>; top: Student[]; onOpenStudent: (student: Student) => void; students: Student[] }) {
-  return <div className="space-y-6"><Hero /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Students" value={summary.students} hint="Active roster" /><Metric label="Avg Marks" value={`${summary.marks}%`} hint="Across all subjects" /><Metric label="Attendance" value={`${summary.attendance}%`} hint="This month" /><Metric label="At Risk" value={summary.risk} hint="Immediate follow-up" /></div><div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]"><Panel title="Performance Trend" subtitle="Average class score across six checkpoints"><Chart><LineChart data={trend}><CartesianGrid stroke="#1f3346" strokeDasharray="4 4" /><XAxis dataKey="month" stroke="#7f96ad" /><YAxis domain={[40, 100]} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="avg" stroke="#38bdf8" strokeWidth={3} dot={{ fill: "#f59e0b", r: 4 }} /></LineChart></Chart></Panel><Panel title="Attendance Mix" subtitle="Present, absent, and leave"><Chart><PieChart><Pie data={attendanceMix} innerRadius={58} outerRadius={92} paddingAngle={4} dataKey="value">{attendanceMix.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart></Chart></Panel></div><div className="grid gap-6 xl:grid-cols-[1.2fr_1fr_1fr]"><Panel title="Grade Distribution" subtitle="Overall grade bands"><Chart><BarChart data={grades}><CartesianGrid stroke="#1f3346" vertical={false} /><XAxis dataKey="grade" stroke="#7f96ad" /><YAxis allowDecimals={false} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Bar dataKey="students" fill="#34d399" radius={[8, 8, 0, 0]} /></BarChart></Chart></Panel><Panel title="Top 5 Leaderboard" subtitle="Best overall performers"><div className="space-y-3">{top.map((student, i) => <button key={student.id} onClick={() => onOpenStudent(student)} className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-400/15 text-sm font-semibold text-sky-200">{i + 1}</div><div><p className="font-medium text-slate-100">{student.name}</p><p className="text-xs text-slate-400">{student.predictedGrade} projected</p></div></div><p className="font-semibold text-emerald-300">{getOverallScore(student)}%</p></button>)}</div></Panel><Panel title="At-Risk Alerts" subtitle="Students under the configured threshold"><div className="space-y-3">{students.filter((student) => student.riskLevel === "High").map((student) => <div key={student.id} className="rounded-2xl border border-rose-400/15 bg-rose-400/8 p-4"><div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="font-medium text-slate-100">{student.name}</p><Badge className={cn("border", riskTone[student.riskLevel])}>{student.riskLevel}</Badge></div><p className="text-sm text-slate-300">{student.attendanceRate}% attendance, {student.marksAverage}% marks.</p></div>)}</div></Panel></div></div>;
+  return <div className="space-y-6"><Hero /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Students" value={summary.students} hint="Active roster" tone="neutral" /><Metric label="Avg Marks" value={`${summary.marks}%`} hint="Across all subjects" tone={summary.marks >= 70 ? "green" : "red"} /><Metric label="Attendance" value={`${summary.attendance}%`} hint="This month" tone={summary.attendance >= 75 ? "green" : "red"} /><Metric label="At Risk" value={summary.risk} hint="Immediate follow-up" tone={summary.risk === 0 ? "green" : "red"} /></div><div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]"><Panel title="Performance Trend" subtitle="Average class score across six checkpoints"><Chart><LineChart data={trend}><CartesianGrid stroke="#1f3346" strokeDasharray="4 4" /><XAxis dataKey="month" stroke="#7f96ad" /><YAxis domain={[40, 100]} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="avg" stroke="#38bdf8" strokeWidth={3} dot={{ fill: "#f59e0b", r: 4 }} isAnimationActive animationDuration={1400} animationEasing="ease-out" /></LineChart></Chart></Panel><Panel title="Attendance Mix" subtitle="Present, absent, and leave"><Chart><PieChart><Pie data={attendanceMix} innerRadius={58} outerRadius={92} paddingAngle={4} dataKey="value" isAnimationActive animationBegin={100} animationDuration={1200} animationEasing="ease-out">{attendanceMix.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart></Chart></Panel></div><div className="grid gap-6 xl:grid-cols-[1.2fr_1fr_1fr]"><Panel title="Grade Distribution" subtitle="Overall grade bands"><Chart><BarChart data={grades}><CartesianGrid stroke="#1f3346" vertical={false} /><XAxis dataKey="grade" stroke="#7f96ad" /><YAxis allowDecimals={false} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Bar dataKey="students" fill="#34d399" radius={[8, 8, 0, 0]} isAnimationActive animationDuration={1000} animationEasing="ease-out" /></BarChart></Chart></Panel><Panel title="Top 5 Leaderboard" subtitle="Best overall performers"><div className="space-y-3">{top.map((student, i) => <button key={student.id} onClick={() => onOpenStudent(student)} className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-400/15 text-sm font-semibold text-sky-200">{i + 1}</div><div><p className="font-medium text-slate-100">{student.name}</p><p className="text-xs text-slate-400">{student.predictedGrade} projected</p></div></div><p className="font-semibold text-emerald-300">{getOverallScore(student)}%</p></button>)}</div></Panel><Panel title="At-Risk Alerts" subtitle="Students under the configured threshold"><div className="space-y-3">{students.filter((student) => student.riskLevel === "High").map((student) => <div key={student.id} className="rounded-2xl border border-rose-400/15 bg-rose-400/8 p-4"><div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="font-medium text-slate-100">{student.name}</p><Badge className={cn("border", riskTone[student.riskLevel])}>{student.riskLevel}</Badge></div><p className="text-sm text-slate-300">{student.attendanceRate}% attendance, {student.marksAverage}% marks.</p></div>)}</div></Panel></div><SmartAlertsPanel students={students} /></div>;
 }
 
 function StudentsPage({ filtered, search, setSearch, risk, setRisk, onOpenStudent }: { filtered: Student[]; search: string; setSearch: (value: string) => void; risk: RiskFilter; setRisk: (value: RiskFilter) => void; onOpenStudent: (student: Student) => void }) {
@@ -248,7 +353,576 @@ function PredictionsPage({ students, selected, selectedId, onSelect }: { student
   return <div className="space-y-6"><Section eyebrow="Forecasting" title="Predictions" description="Surface grade forecasts, momentum direction, and confidence for intervention planning." action={<Button className="rounded-full bg-[#C0A062] text-[#16120B] hover:bg-[#D4B370]" onClick={useAiPredictions}><BrainCircuit className="mr-2 h-4 w-4" />Use AI Predictions</Button>} /><div className="grid gap-6 xl:grid-cols-[0.82fr_1.38fr]"><Panel title="AI Forecast Table" subtitle="Predicted final outcome for each student"><div className="mb-4 rounded-2xl border border-[#C0A062]/16 bg-[#C0A062]/8 px-4 py-3 text-sm text-[#E7D19A]"><span className="font-semibold">AI ready:</span> review grades, confidence, and trends, then use the button above to apply intervention planning.</div><div className="space-y-3">{students.map((student) => <div key={student.id} className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:grid-cols-[1.4fr_0.7fr_0.8fr_1fr] sm:items-center"><div><p className="font-medium text-white">{student.name}</p><p className="text-xs text-slate-400">Overall {getOverallScore(student)}%</p></div><Badge className="w-fit border border-sky-400/20 bg-sky-400/10 text-sky-200">{student.predictedGrade}</Badge><div className={cn("text-sm font-medium", trendTone[student.trend])}>{student.trend}</div><div><div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-slate-500"><span>Confidence</span><span>{student.confidence}%</span></div><Progress value={student.confidence} className="h-2 bg-white/10" /></div></div>)}</div></Panel><Panel title="3D Robot Model" subtitle="Interactive AI assistant preview"><div className="grid gap-5 2xl:grid-cols-[minmax(520px,1.55fr)_minmax(220px,0.45fr)]"><RobotModelViewer modelPath="/robot.glb" /><PredictionFormulaCard /></div><Button className="mt-4 w-full rounded-full bg-sky-400 text-slate-950 hover:bg-sky-300" onClick={useAiPredictions}><BrainCircuit className="mr-2 h-4 w-4" />Run AI Forecast</Button></Panel></div><StudentTabs students={students} selectedId={selectedId} onSelect={onSelect} /><Panel title="Trajectory Line" subtitle={`${selected.name}'s recent score movement`}><Chart><LineChart data={selected.trajectory}><CartesianGrid stroke="#1f3346" strokeDasharray="4 4" /><XAxis dataKey="month" stroke="#7f96ad" /><YAxis domain={[40, 100]} stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="score" stroke="#a78bfa" strokeWidth={3} dot={{ fill: "#38bdf8", r: 4 }} /></LineChart></Chart></Panel></div>;
 }
 
-function InsightsPage({ insights, classHealth, scatter }: { insights: Array<{ id: string; tone: string; title: string; detail: string }>; classHealth: number; scatter: Array<{ x: number; y: number; name: string }> }) { return <div className="space-y-6"><Section eyebrow="Intelligence" title="AI Insights" description="Automated flags across class health, intervention candidates, and performance clusters." /><div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]"><Panel title="Flagged Insights" subtitle="Machine-guided reading of the current class state"><div className="space-y-3">{insights.map((insight) => <div key={insight.id} className={cn("rounded-2xl border p-4", insight.tone === "rose" && "border-rose-400/15 bg-rose-400/8", insight.tone === "amber" && "border-amber-400/15 bg-amber-400/8", insight.tone === "emerald" && "border-emerald-400/15 bg-emerald-400/8")}><p className="font-medium text-white">{insight.title}</p><p className="mt-1 text-sm text-slate-300">{insight.detail}</p></div>)}</div></Panel><Panel title="Class Health Score" subtitle="Composite performance pulse"><Chart><PieChart><Pie data={[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }]} innerRadius={64} outerRadius={94} dataKey="value" startAngle={90} endAngle={-270}>{[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }].map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart></Chart><div className="-mt-8 text-center"><p className="text-5xl font-semibold text-white">{classHealth}</p><p className="text-sm uppercase tracking-[0.22em] text-slate-500">out of 100</p></div></Panel></div><Panel title="Attendance vs Marks" subtitle="Students clustered by reliability and academic output"><Chart className="h-[360px]"><ScatterChart><CartesianGrid stroke="#1f3346" /><XAxis type="number" dataKey="x" name="Attendance" unit="%" stroke="#7f96ad" /><YAxis type="number" dataKey="y" name="Marks" unit="%" stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} formatter={(value) => `${value}%`} cursor={{ strokeDasharray: "4 4" }} /><Scatter data={scatter} fill="#38bdf8" /></ScatterChart></Chart></Panel></div>; }
+function InsightsPage({ insights, classHealth, scatter, students }: { insights: Array<{ id: string; tone: string; title: string; detail: string }>; classHealth: number; scatter: Array<{ x: number; y: number; name: string }>; students: Student[] }) {
+  // ── Derived AI analytics ──────────────────────────────────────────
+  // Top 3 weakest students by overall score
+  const weakStudents = [...students].sort((a, b) => getOverallScore(a) - getOverallScore(b)).slice(0, 3).map((s) => {
+    const weakSub = SUBJECTS.reduce((min, sub) => s.subjectScores[sub] < s.subjectScores[min] ? sub : min, SUBJECTS[0]);
+    return { student: s, weakSubject: weakSub, subScore: s.subjectScores[weakSub], overall: getOverallScore(s) };
+  });
+
+  // Most difficult subject (lowest class average)
+  const subjectAvgs = SUBJECTS.map((sub) => ({
+    subject: sub,
+    avg: students.length ? Math.round(students.reduce((sum, s) => sum + s.subjectScores[sub], 0) / students.length) : 0,
+  })).sort((a, b) => a.avg - b.avg);
+  const hardest = subjectAvgs[0];
+
+  // Class trajectory drop: avg of (t[-2] - t[-1]) across all students
+  const drops = students.map((s) => { const t = s.trajectory; return t.length >= 2 ? t[t.length - 2].score - t[t.length - 1].score : 0; });
+  const avgDrop = Math.round(drops.reduce((a, b) => a + b, 0) / Math.max(drops.length, 1));
+  const fallingCount = students.filter((s) => s.trend === "Falling").length;
+
+  // AI Suggestions
+  type Sug = { id: string; icon: string; severity: "high" | "medium" | "low"; title: string; body: string };
+  const suggestions: Sug[] = [];
+  if (avgDrop >= 5) suggestions.push({ id: "drop", icon: "📉", severity: "high", title: "Class performance dip detected", body: `Class performance dropped by ${avgDrop}% in the last 2 checkpoints — schedule a revision session covering ${hardest.subject} (class avg ${hardest.avg}%) and reinforce Unit fundamentals.` });
+  if (hardest.avg < 70) suggestions.push({ id: "subject", icon: "📚", severity: "high", title: `Revise ${hardest.subject} across the class`, body: `${hardest.subject} is the hardest subject with a class average of only ${hardest.avg}%. Consider extra problem sets, peer study groups, or a dedicated revision week.` });
+  if (fallingCount >= 2) suggestions.push({ id: "falling", icon: "⚠️", severity: "medium", title: `${fallingCount} students on a falling trajectory`, body: `${students.filter((s) => s.trend === "Falling").slice(0, 3).map((s) => s.name.split(" ")[0]).join(", ")} are declining this term. Schedule one-on-one check-ins and targeted practice.` });
+  weakStudents.forEach(({ student, weakSubject, subScore, overall }) => {
+    suggestions.push({ id: `weak-${student.id}`, icon: "👤", severity: overall < 60 ? "high" : "medium", title: `${student.name.split(" ")[0]} needs focused coaching`, body: `Overall score ${overall}% — weakest in ${weakSubject} (${subScore}%). Recommend extra classes, past paper practice, and parent communication.` });
+  });
+  if (suggestions.length === 0) suggestions.push({ id: "ok", icon: "✅", severity: "low", title: "Class is on track", body: "No critical intervention required at this time. Keep monitoring trajectory and assignment completion rates weekly." });
+
+  const sevColor = (sev: string) => sev === "high" ? "border-rose-400/22 bg-rose-400/[0.07] text-rose-200" : sev === "medium" ? "border-amber-400/22 bg-amber-400/[0.07] text-amber-200" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-200";
+  const sevBadge = (sev: string) => sev === "high" ? "bg-rose-400/15 text-rose-300" : sev === "medium" ? "bg-amber-400/15 text-amber-300" : "bg-emerald-400/15 text-emerald-300";
+
+  return (
+    <div className="space-y-6">
+      <Section eyebrow="Intelligence" title="AI Insights" description="Automated flags across class health, intervention candidates, and performance clusters." />
+
+      {/* Row 1: Flagged insights + Health */}
+      <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
+        <Panel title="Flagged Insights" subtitle="Machine-guided reading of the current class state">
+          <div className="space-y-3">{insights.map((insight) => <div key={insight.id} className={cn("rounded-2xl border p-4", insight.tone === "rose" && "border-rose-400/15 bg-rose-400/8", insight.tone === "amber" && "border-amber-400/15 bg-amber-400/8", insight.tone === "emerald" && "border-emerald-400/15 bg-emerald-400/8")}><p className="font-medium text-white">{insight.title}</p><p className="mt-1 text-sm text-slate-300">{insight.detail}</p></div>)}</div>
+        </Panel>
+        <Panel title="Class Health Score" subtitle="Composite performance pulse">
+          <Chart><PieChart><Pie data={[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }]} innerRadius={64} outerRadius={94} dataKey="value" startAngle={90} endAngle={-270}>{[{ name: "Healthy", value: classHealth, color: "#34d399" }, { name: "Gap", value: 100 - classHealth, color: "#223548" }].map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip contentStyle={tooltipStyle} /></PieChart></Chart>
+          <div className="-mt-8 text-center"><p className="text-5xl font-semibold text-white">{classHealth}</p><p className="text-sm uppercase tracking-[0.22em] text-slate-500">out of 100</p></div>
+        </Panel>
+      </div>
+
+      {/* Row 2: Scatter */}
+      <Panel title="Attendance vs Marks" subtitle="Students clustered by reliability and academic output">
+        <Chart className="h-[360px]"><ScatterChart><CartesianGrid stroke="#1f3346" /><XAxis type="number" dataKey="x" name="Attendance" unit="%" stroke="#7f96ad" /><YAxis type="number" dataKey="y" name="Marks" unit="%" stroke="#7f96ad" /><Tooltip contentStyle={tooltipStyle} formatter={(value) => `${value}%`} cursor={{ strokeDasharray: "4 4" }} /><Scatter data={scatter} fill="#38bdf8" /></ScatterChart></Chart>
+      </Panel>
+
+      {/* Row 3: Weak students + Hardest subject */}
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <Panel title="🎯 Top 3 Weak Students" subtitle="Bottom performers by overall score — ranked lowest first">
+          <div className="space-y-3">
+            {weakStudents.map(({ student, weakSubject, subScore, overall }, i) => (
+              <div key={student.id} className="flex items-center gap-4 rounded-2xl border border-rose-400/14 bg-rose-400/[0.06] px-4 py-4">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-400/12 text-base font-bold text-rose-300">#{i + 1}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-[#F5F0E6]">{student.name}</p>
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", overall < 60 ? "bg-rose-400/18 text-rose-300" : "bg-amber-400/15 text-amber-300")}>{overall}%</span>
+                  </div>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-rose-400 transition-all" style={{ width: `${overall}%` }} />
+                  </div>
+                  <p className="mt-2 text-xs text-[#A7A093]">Weakest in <span className="font-medium text-[#E7D19A]">{weakSubject}</span> — <span className="font-mono text-rose-300">{subScore}%</span></p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="📊 Most Difficult Subject" subtitle="Subject with the lowest class average score">
+          <div className="mb-4 flex items-center gap-4 rounded-2xl border border-[#C0A062]/20 bg-[#C0A062]/8 px-4 py-4">
+            <div className="text-3xl">🏆</div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[#8F856F]">Hardest for class</p>
+              <p className="mt-1 text-2xl font-bold text-rose-300">{hardest.subject}</p>
+              <p className="mt-1 text-sm text-[#A7A093]">Class average: <span className="font-mono font-semibold text-rose-300">{hardest.avg}%</span></p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {subjectAvgs.map(({ subject, avg: sAvg }) => (
+              <div key={subject} className="flex items-center gap-3">
+                <p className="w-20 flex-shrink-0 text-xs text-[#A7A093] truncate">{shortSubject(subject)}</p>
+                <div className="relative flex-1 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className={cn("absolute inset-y-0 left-0 rounded-full transition-all", sAvg < 65 ? "bg-rose-400" : sAvg < 75 ? "bg-amber-400" : "bg-emerald-400")} style={{ width: `${sAvg}%` }} />
+                </div>
+                <span className={cn("w-10 text-right text-xs font-mono font-semibold", sAvg < 65 ? "text-rose-300" : sAvg < 75 ? "text-amber-300" : "text-emerald-300")}>{sAvg}%</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      {/* Row 4: AI Improvement Suggestions */}
+      <Card className="min-w-0 rounded-[22px] border-[#C0A062]/12 bg-white/[0.03] p-4 sm:rounded-[30px] sm:p-5 xl:p-6">
+        <div className="mb-5">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[#8F856F]">Generative Analysis</p>
+          <h4 className="mt-1 text-xl font-semibold text-[#F5F0E6] sm:text-2xl">🤖 AI Improvement Suggestions</h4>
+          <p className="mt-1 text-sm text-[#A7A093]">Rule-based recommendations derived from trajectory, subject scores, and risk signals.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {suggestions.map((s) => (
+            <div key={s.id} className={cn("rounded-2xl border p-4", sevColor(s.severity))}>
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl leading-none">{s.icon}</span>
+                  <p className="text-sm font-semibold leading-snug">{s.title}</p>
+                </div>
+                <span className={cn("flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]", sevBadge(s.severity))}>{s.severity}</span>
+              </div>
+              <p className="text-sm leading-5 opacity-85">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Subject colour map ────────────────────────────────────────────────────
+const subjectColors: Record<string, string> = {
+  Mathematics: "#38bdf8",
+  Science: "#34d399",
+  English: "#a78bfa",
+  "Social Studies": "#f59e0b",
+  Computer: "#f472b6",
+};
+
+function TimetablePage({
+  timetable,
+  onUpdateSlot,
+}: {
+  timetable: TimetableDay[];
+  onUpdateSlot: (dayIdx: number, slotId: string, status: LectureStatus) => void;
+}) {
+  const todayName = (["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()] ?? "Mon") as TimetableDay["day"];
+  const validDays = timetable.map((d) => d.day);
+  const defaultDay: TimetableDay["day"] = validDays.includes(todayName) ? todayName : (validDays[0] ?? "Mon");
+  const [activeDay, setActiveDay] = useState<TimetableDay["day"]>(defaultDay);
+
+  const dayIdx = timetable.findIndex((d) => d.day === activeDay);
+  const dayData = timetable[dayIdx];
+
+  // Syllabus coverage per subject across ALL days
+  const coverage = SUBJECTS.map((sub) => {
+    const allSlots = timetable.flatMap((d) => d.slots).filter((s) => s.subject === sub);
+    const done = allSlots.filter((s) => s.status === "done").length;
+    const total = allSlots.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return { subject: sub, done, total, pct };
+  });
+
+  const overallDone = timetable.flatMap((d) => d.slots).filter((s) => s.status === "done").length;
+  const overallTotal = timetable.flatMap((d) => d.slots).length;
+  const overallPct = overallTotal ? Math.round((overallDone / overallTotal) * 100) : 0;
+
+  function cycleStatus(current: LectureStatus): LectureStatus {
+    return current === "pending" ? "done" : current === "done" ? "skipped" : "pending";
+  }
+
+  const statusStyle: Record<LectureStatus, string> = {
+    done: "border-emerald-400/30 bg-emerald-400/[0.08]",
+    pending: "border-[#C0A062]/18 bg-white/[0.03]",
+    skipped: "border-rose-400/20 bg-rose-400/[0.06]",
+  };
+  const statusBadge: Record<LectureStatus, string> = {
+    done: "bg-emerald-400/15 text-emerald-300",
+    pending: "bg-[#C0A062]/12 text-[#C9B07A]",
+    skipped: "bg-rose-400/12 text-rose-300",
+  };
+  const statusLabel: Record<LectureStatus, string> = { done: "✅ Done", pending: "🕐 Pending", skipped: "⏭ Skipped" };
+
+  return (
+    <div className="space-y-6">
+      <Section eyebrow="Schedule" title="Timetable & Tracking" description="View daily lectures, mark completion, and track syllabus coverage per subject." />
+
+      {/* Coverage Summary Strip */}
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="sm:col-span-3 xl:col-span-1 flex flex-col justify-center rounded-[22px] border border-[#C0A062]/14 bg-[#C0A062]/8 p-4 text-center">
+          <p className="text-xs uppercase tracking-[0.18em] text-[#8F856F]">Overall</p>
+          <p className="mt-2 text-4xl font-bold text-[#F5E8C8]">{overallPct}%</p>
+          <p className="mt-1 text-xs text-[#A7A093]">{overallDone}/{overallTotal} lectures</p>
+        </div>
+        {coverage.map(({ subject, pct, done, total }) => (
+          <div key={subject} className="rounded-[22px] border border-[#C0A062]/12 bg-white/[0.03] p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-[#8F856F] truncate">{shortSubject(subject)}</p>
+            <p className="mt-2 text-2xl font-bold" style={{ color: subjectColors[subject] }}>{pct}%</p>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: subjectColors[subject] }} />
+            </div>
+            <p className="mt-1 text-xs text-[#A7A093]">{done}/{total} done</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+        {/* Day view */}
+        <div className="space-y-4">
+          {/* Day tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {timetable.map((d) => {
+              const dayDone = d.slots.filter((s) => s.status === "done").length;
+              const dayTotal = d.slots.length;
+              return (
+                <button
+                  key={d.day}
+                  onClick={() => setActiveDay(d.day)}
+                  className={cn(
+                    "flex min-w-[80px] flex-col items-center rounded-2xl border px-4 py-3 text-sm font-medium transition",
+                    activeDay === d.day
+                      ? "border-[#C0A062]/45 bg-[#C0A062] text-[#16120B]"
+                      : "border-[#C0A062]/12 bg-white/[0.03] text-[#C9C1B0] hover:bg-white/[0.06]"
+                  )}
+                >
+                  <span className="font-semibold">{d.day}</span>
+                  <span className={cn("mt-1 text-[11px]", activeDay === d.day ? "text-[#16120B]/70" : "text-[#8F856F]")}>{dayDone}/{dayTotal}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Period cards */}
+          {dayData ? (
+            <div className="space-y-3">
+              {dayData.slots.map((slot) => (
+                <button
+                  key={slot.id}
+                  onClick={() => onUpdateSlot(dayIdx, slot.id, cycleStatus(slot.status))}
+                  className={cn(
+                    "group w-full rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] hover:shadow-lg",
+                    statusStyle[slot.status]
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4 min-w-0">
+                      {/* Period number */}
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl text-sm font-bold" style={{ background: `${subjectColors[slot.subject]}20`, color: subjectColors[slot.subject] }}>
+                        P{slot.period}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-[#F5F0E6]">{slot.subject}</p>
+                          <span className="h-1 w-1 rounded-full bg-[#5F584C]" />
+                          <p className="text-xs text-[#A7A093]">{slot.startTime} – {slot.endTime}</p>
+                        </div>
+                        <p className="mt-1 text-sm text-[#C9C1B0] truncate">{slot.topic}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                      <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusBadge[slot.status])}>
+                        {statusLabel[slot.status]}
+                      </span>
+                      <span className="text-[11px] text-[#5F584C] opacity-0 group-hover:opacity-100 transition">Click to cycle</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[#C0A062]/14 bg-white/[0.03] p-8 text-center text-[#A7A093]">No lectures scheduled.</div>
+          )}
+        </div>
+
+        {/* Syllabus Coverage Chart */}
+        <div className="space-y-4">
+          <Panel title="Syllabus Coverage" subtitle="Completed lectures across all days per subject">
+            <div className="space-y-4">
+              {[...coverage].sort((a, b) => b.pct - a.pct).map(({ subject, pct, done, total }) => (
+                <div key={subject}>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-sm font-medium text-[#D7D2C7]">{subject}</p>
+                    <span className="font-mono text-sm font-semibold" style={{ color: subjectColors[subject] }}>{pct}%</span>
+                  </div>
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: subjectColors[subject] }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-[#8F856F]">{done} of {total} lectures completed</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-6 grid grid-cols-3 gap-2 border-t border-[#C0A062]/10 pt-4">
+              {(["done", "pending", "skipped"] as LectureStatus[]).map((s) => (
+                <div key={s} className={cn("rounded-xl border p-2 text-center text-xs font-medium", statusBadge[s], s === "done" ? "border-emerald-400/20" : s === "skipped" ? "border-rose-400/18" : "border-[#C0A062]/18")}>
+                  {statusLabel[s]}
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Simulated class data for HOD comparison ──────────────────────────────
+type ClassSnapshot = {
+  label: string;
+  section: string;
+  teacher: string;
+  students: number;
+  avgMarks: number;
+  attendance: number;
+  atRisk: number;
+  health: number;
+  subjectAvgs: Record<string, number>;
+};
+
+function buildSimulatedClasses(myClass: DataVistaState): ClassSnapshot[] {
+  const base = myClass.students.length
+    ? Math.round(myClass.students.reduce((s, st) => s + st.marksAverage, 0) / myClass.students.length)
+    : 72;
+  const baseAtt = myClass.students.length
+    ? Math.round(myClass.students.reduce((s, st) => s + st.attendanceRate, 0) / myClass.students.length)
+    : 80;
+  const baseSubject = (delta: number) => ({
+    Mathematics: Math.min(100, Math.max(40, base + delta - 2)),
+    Science: Math.min(100, Math.max(40, base + delta + 3)),
+    English: Math.min(100, Math.max(40, base + delta - 5)),
+    "Social Studies": Math.min(100, Math.max(40, base + delta - 8)),
+    Computer: Math.min(100, Math.max(40, base + delta + 6)),
+  });
+
+  const mySubjects = SUBJECTS.reduce((acc, sub) => {
+    acc[sub] = myClass.students.length
+      ? Math.round(myClass.students.reduce((s, st) => s + (st.subjectScores[sub] ?? 0), 0) / myClass.students.length)
+      : base;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const myRisk = myClass.students.filter((s) => s.riskLevel === "High").length;
+  const myHealth = calculateClassHealth(myClass.students);
+
+  return [
+    {
+      label: `${myClass.settings.className} ${myClass.settings.section}`,
+      section: myClass.settings.section,
+      teacher: myClass.settings.classTeacher,
+      students: myClass.students.length,
+      avgMarks: base,
+      attendance: baseAtt,
+      atRisk: myRisk,
+      health: myHealth,
+      subjectAvgs: mySubjects,
+    },
+    {
+      label: `${myClass.settings.className} B`,
+      section: "B",
+      teacher: "Dr. Anita Kumar",
+      students: Math.max(8, myClass.students.length - 1),
+      avgMarks: Math.max(40, base - 7),
+      attendance: Math.max(50, baseAtt - 5),
+      atRisk: myRisk + 2,
+      health: Math.max(20, myHealth - 9),
+      subjectAvgs: baseSubject(-7),
+    },
+    {
+      label: `${myClass.settings.className} C`,
+      section: "C",
+      teacher: "Prof. Rajan Iyer",
+      students: Math.max(8, myClass.students.length + 2),
+      avgMarks: Math.min(100, base + 4),
+      attendance: Math.min(100, baseAtt + 3),
+      atRisk: Math.max(0, myRisk - 1),
+      health: Math.min(100, myHealth + 5),
+      subjectAvgs: baseSubject(4),
+    },
+    {
+      label: `${myClass.settings.className} D`,
+      section: "D",
+      teacher: "Ms. Pooja Singh",
+      students: Math.max(6, myClass.students.length - 3),
+      avgMarks: Math.max(40, base - 12),
+      attendance: Math.max(50, baseAtt - 9),
+      atRisk: myRisk + 4,
+      health: Math.max(20, myHealth - 15),
+      subjectAvgs: baseSubject(-12),
+    },
+  ];
+}
+
+const CLASS_COLORS = ["#C0A062", "#38bdf8", "#34d399", "#a78bfa"];
+
+function ComparePage({ myClass, role, schoolName }: { myClass: DataVistaState; role: string; schoolName: string }) {
+  const classes = useMemo(() => buildSimulatedClasses(myClass), [myClass]);
+  const [selected, setSelected] = useState<string[]>(classes.map((c) => c.label));
+
+  const visible = classes.filter((c) => selected.includes(c.label));
+  const winner = [...classes].sort((a, b) => b.health - a.health)[0];
+
+  // Subject comparison chart data
+  const subjectChartData = SUBJECTS.map((sub) => {
+    const row: Record<string, string | number> = { subject: shortSubject(sub) };
+    visible.forEach((cls) => { row[cls.label] = cls.subjectAvgs[sub] ?? 0; });
+    return row;
+  });
+
+  // Weakest subject across all visible classes
+  const subjectWeakness = SUBJECTS.map((sub) => {
+    const avg = visible.length ? Math.round(visible.reduce((s, c) => s + (c.subjectAvgs[sub] ?? 0), 0) / visible.length) : 0;
+    return { subject: sub, avg };
+  }).sort((a, b) => a.avg - b.avg);
+
+  function toggleClass(label: string) {
+    setSelected((prev) => prev.includes(label) ? (prev.length > 1 ? prev.filter((l) => l !== label) : prev) : [...prev, label]);
+  }
+
+  return (
+    <div className="space-y-6">
+      <Section
+        eyebrow={role === "dean" ? "Dean Overview" : "HOD Analytics"}
+        title="Class Comparison"
+        description={`Cross-section performance analysis for ${schoolName}. Compare marks, attendance, and subject strength across all divisions.`}
+      />
+
+      {/* Class toggle pills */}
+      <div className="flex flex-wrap gap-2">
+        {classes.map((cls, i) => (
+          <button
+            key={cls.label}
+            onClick={() => toggleClass(cls.label)}
+            className={cn(
+              "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition",
+              selected.includes(cls.label)
+                ? "border-transparent text-[#16120B]"
+                : "border-[#C0A062]/18 bg-white/[0.03] text-[#A7A093] hover:border-[#C0A062]/30"
+            )}
+            style={selected.includes(cls.label) ? { background: CLASS_COLORS[i] } : {}}
+          >
+            <span className="h-2 w-2 rounded-full" style={{ background: CLASS_COLORS[i] }} />
+            {cls.label}
+            {cls.label === winner.label && <span className="ml-1 text-[10px]">👑</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary metric cards */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {classes.map((cls, i) => (
+          <div
+            key={cls.label}
+            className={cn(
+              "rounded-[22px] border p-5 transition",
+              cls.label === winner.label
+                ? "border-[#a78bfa]/35 bg-[#a78bfa]/[0.07]"
+                : "border-[#C0A062]/14 bg-white/[0.03]"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <span className="h-3 w-3 rounded-full" style={{ background: CLASS_COLORS[i] }} />
+              {cls.label === winner.label && <span className="rounded-full bg-[#a78bfa]/18 px-2 py-0.5 text-[10px] font-bold text-[#a78bfa]">WINNER 👑</span>}
+            </div>
+            <p className="mt-3 text-lg font-bold text-[#F5F0E6]">{cls.label}</p>
+            <p className="text-xs text-[#8F856F]">{cls.teacher}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[#8F856F]">Health</p>
+                <p className={cn("mt-1 text-xl font-bold", cls.health >= 75 ? "text-emerald-300" : cls.health >= 60 ? "text-amber-300" : "text-rose-300")}>{cls.health}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[#8F856F]">Marks</p>
+                <p className="mt-1 text-xl font-bold text-[#F5E8C8]">{cls.avgMarks}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[#8F856F]">Attendance</p>
+                <p className={cn("mt-1 text-lg font-semibold", cls.attendance >= 75 ? "text-emerald-300" : "text-rose-300")}>{cls.attendance}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[#8F856F]">At Risk</p>
+                <p className={cn("mt-1 text-lg font-semibold", cls.atRisk === 0 ? "text-emerald-300" : "text-rose-300")}>{cls.atRisk}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+        {/* Subject comparison bar chart */}
+        <Panel title="📊 Subject-Wise Comparison" subtitle="Average subject score per section">
+          <Chart className="h-[320px]">
+            <BarChart data={subjectChartData}>
+              <CartesianGrid stroke="#1f3346" vertical={false} />
+              <XAxis dataKey="subject" stroke="#7f96ad" />
+              <YAxis domain={[40, 100]} stroke="#7f96ad" />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend />
+              {visible.map((cls, i) => (
+                <Bar key={cls.label} dataKey={cls.label} fill={CLASS_COLORS[classes.findIndex((c) => c.label === cls.label)]} radius={[6, 6, 0, 0]} />
+              ))}
+            </BarChart>
+          </Chart>
+        </Panel>
+
+        {/* Weakest subjects */}
+        <Panel title="🔴 Weakest Subjects (All Sections)" subtitle="Ranked worst → best across visible classes">
+          <div className="space-y-3">
+            {subjectWeakness.map(({ subject, avg }, idx) => (
+              <div key={subject} className={cn("flex items-center gap-4 rounded-2xl border p-3", idx === 0 ? "border-rose-400/22 bg-rose-400/[0.06]" : idx === 1 ? "border-amber-400/18 bg-amber-400/[0.05]" : "border-[#C0A062]/12 bg-white/[0.03]")}>
+                <span className="text-lg">{idx === 0 ? "🔴" : idx === 1 ? "🟡" : "🟢"}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-[#F5F0E6]">{subject}</p>
+                    <span className={cn("font-mono text-sm font-bold", avg < 65 ? "text-rose-300" : avg < 75 ? "text-amber-300" : "text-emerald-300")}>{avg}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className={cn("h-full rounded-full transition-all", avg < 65 ? "bg-rose-400" : avg < 75 ? "bg-amber-400" : "bg-emerald-400")} style={{ width: `${avg}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      {/* Full comparison table */}
+      <Panel title="📋 Head-to-Head Table" subtitle="Complete metrics across all sections">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-b border-[#C0A062]/12 text-xs uppercase tracking-[0.18em] text-[#8F856F]">
+                <th className="pb-3 text-left">Section</th>
+                <th className="pb-3 text-left">Teacher</th>
+                <th className="pb-3 text-right">Students</th>
+                <th className="pb-3 text-right">Health</th>
+                <th className="pb-3 text-right">Avg Marks</th>
+                <th className="pb-3 text-right">Attendance</th>
+                <th className="pb-3 text-right">At Risk</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#C0A062]/8">
+              {classes.map((cls, i) => (
+                <tr key={cls.label} className={cn("transition hover:bg-white/[0.02]", cls.label === winner.label && "bg-[#a78bfa]/[0.04]")}>
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: CLASS_COLORS[i] }} />
+                      <span className="font-semibold text-[#F5F0E6]">{cls.label}</span>
+                      {cls.label === winner.label && <span className="text-xs">👑</span>}
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4 text-[#A7A093]">{cls.teacher}</td>
+                  <td className="py-3 pr-4 text-right text-[#D7D2C7]">{cls.students}</td>
+                  <td className="py-3 pr-4 text-right">
+                    <span className={cn("font-semibold", cls.health >= 75 ? "text-emerald-300" : cls.health >= 60 ? "text-amber-300" : "text-rose-300")}>{cls.health}</span>
+                  </td>
+                  <td className="py-3 pr-4 text-right text-[#D7D2C7]">{cls.avgMarks}%</td>
+                  <td className="py-3 pr-4 text-right">
+                    <span className={cn("font-semibold", cls.attendance >= 75 ? "text-emerald-300" : "text-rose-300")}>{cls.attendance}%</span>
+                  </td>
+                  <td className="py-3 text-right">
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", cls.atRisk === 0 ? "bg-emerald-400/12 text-emerald-300" : "bg-rose-400/12 text-rose-300")}>{cls.atRisk}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
 
 function CalculatorPage() {
   const [expression, setExpression] = useState("0");
@@ -326,6 +1000,184 @@ function CalculatorExample({ label, expression, onUse }: { label: string; expres
   return <button type="button" onClick={() => onUse(expression)} className="rounded-2xl border border-[#C0A062]/12 bg-white/[0.03] p-4 text-left transition hover:border-[#C0A062]/28 hover:bg-white/[0.06]"><p className="text-sm font-medium text-[#F5F0E6]">{label}</p><p className="mt-2 font-mono text-sm text-[#E7D19A]">{expression}</p></button>;
 }
 
+function SmartAlertsPanel({ students }: { students: Student[] }) {
+  // 1. Low attendance (<75%)
+  const lowAttendance = students.filter((s) => s.attendanceRate < 75);
+
+  // 2. Sudden marks drop: last trajectory point dropped ≥8 pts vs previous
+  const marksDrop = students
+    .map((s) => {
+      const t = s.trajectory;
+      if (t.length < 2) return null;
+      const drop = t[t.length - 2].score - t[t.length - 1].score;
+      return drop >= 8 ? { student: s, drop } : null;
+    })
+    .filter(Boolean) as Array<{ student: Student; drop: number }>;
+
+  // 3. Assignment completion below 60%
+  const lowAssignment = students.filter((s) => s.assignmentCompletion < 60);
+
+  // 4. AI suggestions: weakest subject for medium/high risk students scoring <70
+  const suggestions = students
+    .filter((s) => s.riskLevel !== "Low")
+    .map((s) => {
+      const weakest = SUBJECTS.reduce((min, sub) => (s.subjectScores[sub] < s.subjectScores[min] ? sub : min), SUBJECTS[0]);
+      return { id: s.id, name: s.name.split(" ")[0], subject: weakest, score: s.subjectScores[weakest] };
+    })
+    .filter((x) => x.score < 70)
+    .slice(0, 4);
+
+  const totalAlerts = lowAttendance.length + marksDrop.length + lowAssignment.length;
+
+  return (
+    <Card className="min-w-0 rounded-[22px] border-[#C0A062]/12 bg-white/[0.03] p-4 sm:rounded-[30px] sm:p-5 xl:p-6">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[#8F856F] sm:text-xs">Live Monitoring</p>
+          <h4 className="mt-1 text-xl font-semibold text-[#F5F0E6] sm:text-2xl">Smart Alerts</h4>
+          <p className="mt-1 text-sm text-[#A7A093]">Real-time flags and AI-driven intervention suggestions for your class.</p>
+        </div>
+        {totalAlerts > 0 && (
+          <div className="flex items-center gap-2 rounded-2xl border border-rose-400/25 bg-rose-400/10 px-4 py-2">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-rose-400" />
+            <span className="text-sm font-semibold text-rose-200">{totalAlerts} active alert{totalAlerts !== 1 ? "s" : ""}</span>
+          </div>
+        )}
+        {totalAlerts === 0 && (
+          <div className="flex items-center gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-400/8 px-4 py-2">
+            <span className="text-emerald-300">✅</span>
+            <span className="text-sm font-semibold text-emerald-200">All clear</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* ── Alert columns ── */}
+        <div className="space-y-3">
+          {/* Low Attendance */}
+          {lowAttendance.length > 0 ? (
+            <div className="rounded-2xl border border-amber-400/22 bg-amber-400/[0.07] p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xl leading-none">⚠️</span>
+                <p className="text-sm font-semibold text-amber-200">Low Attendance Alert</p>
+                <span className="ml-auto rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-medium text-amber-300">{lowAttendance.length}</span>
+              </div>
+              <p className="mb-3 text-xs text-amber-300/60">Students below 75% threshold</p>
+              <div className="space-y-2">
+                {lowAttendance.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+                    <span className="text-[#E7DFC9]">{s.name}</span>
+                    <span className="font-mono font-semibold text-amber-300">{s.attendanceRate}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] px-4 py-3 text-sm text-emerald-300">⚠️ <span className="ml-1 text-emerald-200">Attendance</span> — No low-attendance students.</div>
+          )}
+
+          {/* Marks Drop */}
+          {marksDrop.length > 0 ? (
+            <div className="rounded-2xl border border-rose-400/22 bg-rose-400/[0.07] p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xl leading-none">📉</span>
+                <p className="text-sm font-semibold text-rose-200">Sudden Marks Drop</p>
+                <span className="ml-auto rounded-full bg-rose-400/15 px-2 py-0.5 text-xs font-medium text-rose-300">{marksDrop.length}</span>
+              </div>
+              <p className="mb-3 text-xs text-rose-300/60">Score dipped ≥8 pts in last checkpoint</p>
+              <div className="space-y-2">
+                {marksDrop.map(({ student, drop }) => (
+                  <div key={student.id} className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+                    <span className="text-[#E7DFC9]">{student.name}</span>
+                    <span className="font-mono font-semibold text-rose-300">−{drop} pts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] px-4 py-3 text-sm text-emerald-300">📉 <span className="ml-1 text-emerald-200">Marks</span> — No sudden drops detected.</div>
+          )}
+
+          {/* Assignment Not Submitted */}
+          {lowAssignment.length > 0 ? (
+            <div className="rounded-2xl border border-orange-400/22 bg-orange-400/[0.07] p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xl leading-none">❗</span>
+                <p className="text-sm font-semibold text-orange-200">Assignments Not Submitted</p>
+                <span className="ml-auto rounded-full bg-orange-400/15 px-2 py-0.5 text-xs font-medium text-orange-300">{lowAssignment.length}</span>
+              </div>
+              <p className="mb-3 text-xs text-orange-300/60">Completion rate below 60%</p>
+              <div className="space-y-2">
+                {lowAssignment.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+                    <span className="text-[#E7DFC9]">{s.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-orange-400" style={{ width: `${s.assignmentCompletion}%` }} />
+                      </div>
+                      <span className="font-mono font-semibold text-orange-300">{s.assignmentCompletion}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] px-4 py-3 text-sm text-emerald-300">❗ <span className="ml-1 text-emerald-200">Assignments</span> — All students meeting submission targets.</div>
+          )}
+        </div>
+
+        {/* ── AI Recommendations column ── */}
+        <div>
+          <p className="mb-3 text-[11px] uppercase tracking-[0.22em] text-[#8F856F]">💡 AI Recommendations</p>
+          {suggestions.length > 0 ? (
+            <div className="space-y-3">
+              {suggestions.map((s) => (
+                <div key={s.id} className="rounded-2xl border border-[#C0A062]/18 bg-[linear-gradient(135deg,rgba(192,160,98,0.10),rgba(192,160,98,0.04))] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-[#C0A062]/22 bg-[#C0A062]/12 text-base">
+                      📚
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#F5F0E6]">{s.name} needs extra support</p>
+                      <p className="mt-1 text-sm leading-5 text-[#A7A093]">
+                        Schedule extra classes in{" "}
+                        <span className="font-semibold text-[#E7D19A]">{s.subject}</span>
+                        {" — current score: "}
+                        <span className="font-mono font-semibold text-rose-300">{s.score}%</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] p-4">
+              <p className="text-sm font-semibold text-emerald-200">✅ No critical subject recommendations</p>
+              <p className="mt-1 text-sm text-emerald-300/70">All students are meeting subject score thresholds.</p>
+            </div>
+          )}
+
+          {/* Alert summary card */}
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] p-3 text-center">
+              <p className="text-2xl font-semibold text-amber-300">{lowAttendance.length}</p>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-amber-400/70">Low Attend.</p>
+            </div>
+            <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.06] p-3 text-center">
+              <p className="text-2xl font-semibold text-rose-300">{marksDrop.length}</p>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-rose-400/70">Marks Drop</p>
+            </div>
+            <div className="rounded-2xl border border-orange-400/15 bg-orange-400/[0.06] p-3 text-center">
+              <p className="text-2xl font-semibold text-orange-300">{lowAssignment.length}</p>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-orange-400/70">Pending</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function SettingsPage({ settingsDraft, setSettingsDraft, saveSettings, exportCsv, exportBackup, resetDemo, deleteAccount }: { settingsDraft: ClassSettings; setSettingsDraft: React.Dispatch<React.SetStateAction<ClassSettings>>; saveSettings: () => void; exportCsv: () => void; exportBackup: () => void; resetDemo: () => void; deleteAccount: () => void }) { return <div className="space-y-6"><Section eyebrow="Configuration" title="Settings" description="Tune thresholds, export your working data, or restore the saved demo setup." /><div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]"><Panel title="Class Configuration" subtitle="Core identity and teacher ownership"><div className="grid gap-4 md:grid-cols-2"><Field label="School Name"><Input value={settingsDraft.schoolName} onChange={(e) => setSettingsDraft((c) => ({ ...c, schoolName: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Class Teacher"><Input value={settingsDraft.classTeacher} onChange={(e) => setSettingsDraft((c) => ({ ...c, classTeacher: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Class"><Input value={settingsDraft.className} onChange={(e) => setSettingsDraft((c) => ({ ...c, className: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Section"><Input value={settingsDraft.section} onChange={(e) => setSettingsDraft((c) => ({ ...c, section: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field><Field label="Term"><Input value={settingsDraft.term} onChange={(e) => setSettingsDraft((c) => ({ ...c, term: e.target.value }))} className="h-11 rounded-2xl border-white/10 bg-slate-900/70" /></Field></div></Panel><Panel title="Thresholds & Actions" subtitle="Intervention controls and data utilities"><div className="space-y-4"><NumberField label="At-Risk Threshold" value={settingsDraft.atRiskThreshold} onChange={(value) => setSettingsDraft((c) => ({ ...c, atRiskThreshold: value }))} /><NumberField label="Attendance Threshold" value={settingsDraft.attendanceThreshold} onChange={(value) => setSettingsDraft((c) => ({ ...c, attendanceThreshold: value }))} /><NumberField label="Marks Threshold" value={settingsDraft.marksThreshold} onChange={(value) => setSettingsDraft((c) => ({ ...c, marksThreshold: value }))} /><Toggle label="Send parent alerts" checked={settingsDraft.sendAlerts} onChange={(checked) => setSettingsDraft((c) => ({ ...c, sendAlerts: checked }))} /><Toggle label="Weekly digest" checked={settingsDraft.weeklyDigest} onChange={(checked) => setSettingsDraft((c) => ({ ...c, weeklyDigest: checked }))} /><div className="grid gap-3 pt-2"><Button className="w-full rounded-full bg-sky-500 text-slate-950 hover:bg-sky-400 sm:w-auto" onClick={saveSettings}><Save className="mr-2 h-4 w-4" />Save Settings</Button><Button variant="outline" className="w-full rounded-full border-white/10 bg-transparent text-slate-200 hover:bg-white/10 sm:w-auto" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Export CSV</Button><Button variant="outline" className="w-full rounded-full border-white/10 bg-transparent text-slate-200 hover:bg-white/10 sm:w-auto" onClick={exportBackup}><FileSpreadsheet className="mr-2 h-4 w-4" />Backup JSON</Button><Button variant="outline" className="w-full rounded-full border-rose-400/20 bg-transparent text-rose-200 hover:bg-rose-400/10 sm:w-auto" onClick={resetDemo}>Reset to Saved Demo</Button><Button variant="outline" className="w-full rounded-full border-rose-500/35 bg-rose-500/10 text-rose-200 hover:bg-rose-500/18 sm:w-auto" onClick={deleteAccount}><Trash2 className="mr-2 h-4 w-4" />Delete Account</Button><p className="text-xs text-[#A79B84]">This permanently removes your login and synced class data from DataVista.</p></div></div></Panel></div></div>; }
 
 function Hero() { return <Card className="overflow-hidden rounded-[24px] border-[#C0A062]/14 bg-[linear-gradient(135deg,rgba(192,160,98,0.12),rgba(14,12,10,0.98)_46%,rgba(192,160,98,0.16))] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.4)] sm:rounded-[36px] sm:p-6 xl:p-8"><p className="text-[11px] uppercase tracking-[0.2em] text-[#C8B07A] sm:text-xs sm:tracking-[0.28em]">Command Center</p><h3 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight text-[#FFF7E8] sm:text-4xl xl:text-5xl">One place to see class performance, risk signals, and next actions.</h3><p className="mt-3 max-w-2xl text-sm leading-6 text-[#B9B09E] sm:mt-4 sm:text-base">DataVista 2.0 brings dashboard analytics, attendance control, predictions, and AI insights into one artifact.</p></Card>; }
@@ -338,7 +1190,21 @@ function PredictionFormulaCard() {
 function RobotModelViewer({ modelPath }: { modelPath: string }) {
   return <div className="relative min-h-[360px] overflow-hidden rounded-[22px] border border-[#C0A062]/12 bg-[radial-gradient(circle_at_top,rgba(192,160,98,0.16),transparent_46%),linear-gradient(180deg,#090909_0%,#050505_100%)] sm:min-h-[620px] sm:rounded-[26px]"><model-viewer src={modelPath} camera-controls auto-rotate camera-orbit="0deg 74deg 24%" min-camera-orbit="auto auto 16%" max-camera-orbit="auto auto 52%" field-of-view="16deg" rotation-per-second="18deg" shadow-intensity="1.25" exposure="1.18" environment-image="neutral" interaction-prompt="auto" tone-mapping="commerce" className="block h-[360px] w-full bg-transparent sm:h-[620px]" style={{ "--progress-bar-color": "#C0A062", "--progress-bar-height": "4px" } as React.CSSProperties}><button className="rounded-full border border-[#C0A062]/20 bg-black/65 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#F5F0E6]" slot="poster">Tap To Load Model</button></model-viewer><div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" /></div>;
 }
-function Metric({ label, value, hint }: { label: string; value: string | number; hint: string }) { return <Card className="rounded-[22px] border-[#C0A062]/12 bg-white/[0.03] p-4 sm:rounded-[28px] sm:p-5"><p className="text-xs uppercase tracking-[0.16em] text-[#8F856F] sm:text-sm sm:tracking-[0.18em]">{label}</p><p className="mt-2 text-3xl font-semibold text-[#F5F0E6] sm:text-4xl">{value}</p><p className="mt-2 text-sm text-[#A7A093]">{hint}</p></Card>; }
+function Metric({ label, value, hint, tone = "neutral" }: { label: string; value: string | number; hint: string; tone?: "green" | "red" | "neutral" }) {
+  const valueColor = tone === "green" ? "text-emerald-400" : tone === "red" ? "text-rose-400" : "text-[#F5F0E6]";
+  const glowClass  = tone === "green" ? "shadow-[0_0_22px_rgba(52,211,153,0.12)]" : tone === "red" ? "shadow-[0_0_22px_rgba(251,113,133,0.14)]" : "";
+  const dotColor   = tone === "green" ? "bg-emerald-400" : tone === "red" ? "bg-rose-400" : "bg-[#C0A062]";
+  return (
+    <Card className={cn("rounded-[22px] border-[#C0A062]/12 bg-white/[0.03] p-4 sm:rounded-[28px] sm:p-5 transition-all", glowClass)}>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs uppercase tracking-[0.16em] text-[#8F856F] sm:text-sm sm:tracking-[0.18em]">{label}</p>
+        <span className={cn("h-2 w-2 rounded-full", dotColor)} />
+      </div>
+      <p className={cn("mt-1 text-3xl font-semibold sm:text-4xl", valueColor)}>{value}</p>
+      <p className="mt-2 text-sm text-[#A7A093]">{hint}</p>
+    </Card>
+  );
+}
 function MiniStat({ label, value }: { label: string; value: string | number }) { return <div className="rounded-2xl border border-[#C0A062]/12 bg-white/[0.03] px-3 py-3"><p className="text-xs uppercase tracking-[0.18em] text-[#8F856F]">{label}</p><p className="mt-1 text-lg font-semibold text-[#F5F0E6]">{value}</p></div>; }
 function MiniCard({ label, value }: { label: string; value: string | number }) { return <Card className="rounded-[24px] border-[#C0A062]/12 bg-white/[0.03] p-4"><p className="text-xs uppercase tracking-[0.2em] text-[#8F856F]">{label}</p><p className="mt-2 text-2xl font-semibold text-[#F5F0E6]">{value}</p></Card>; }
 function StudentTabs({ students, selectedId, onSelect }: { students: Student[]; selectedId: string; onSelect: (id: string) => void }) { return <div className="flex gap-2 overflow-x-auto pb-1">{students.map((student) => <button key={student.id} onClick={() => onSelect(student.id)} className={cn("rounded-full border px-4 py-2 text-sm transition", selectedId === student.id ? "border-[#C0A062]/40 bg-[#C0A062]/12 text-[#F4E6C4]" : "border-[#C0A062]/12 bg-white/[0.03] text-[#C9C1B0] hover:bg-white/[0.06]")}>{student.name}</button>)}</div>; }

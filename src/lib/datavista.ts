@@ -10,6 +10,24 @@ export type ExamName = (typeof EXAMS)[number];
 export type TrendDirection = "Rising" | "Steady" | "Falling";
 export type RiskLevel = "Low" | "Medium" | "High";
 export type AttendanceStatus = "present" | "absent" | "leave";
+export type LectureStatus = "pending" | "done" | "skipped";
+
+export interface LectureSlot {
+  id: string;
+  period: number;          // 1-6
+  subject: Subject;
+  topic: string;
+  totalTopics: number;     // how many topics this subject has in the syllabus
+  completedTopics: number; // running count
+  status: LectureStatus;
+  startTime: string;       // "09:00"
+  endTime: string;         // "09:45"
+}
+
+export interface TimetableDay {
+  day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri";
+  slots: LectureSlot[];
+}
 
 export interface AttendanceEntry {
   day: number;
@@ -74,6 +92,7 @@ export interface DataVistaState {
   students: Student[];
   assignments: AssignmentItem[];
   settings: ClassSettings;
+  timetable: TimetableDay[];
 }
 
 const STORAGE_KEY = "datavista_v2_state";
@@ -132,20 +151,71 @@ function normalizeState(state: DataVistaState): DataVistaState {
   return {
     ...state,
     settings: normalizeSettings(state.settings),
+    timetable: state.timetable?.length ? state.timetable : createSeedTimetable(),
   };
 }
 
 const seedProfiles = [
-  { name: "Aarav Mehta", guardianName: "Ritesh Mehta", phone: "9876543210", email: "aarav@datavista.edu", marks: 91, attendance: 96, assignments: 94, participation: 88, trend: "Rising" as const },
-  { name: "Diya Nair", guardianName: "Sreeja Nair", phone: "9811122233", email: "diya@datavista.edu", marks: 84, attendance: 89, assignments: 86, participation: 78, trend: "Steady" as const },
-  { name: "Kabir Khan", guardianName: "Imran Khan", phone: "9898989898", email: "kabir@datavista.edu", marks: 73, attendance: 82, assignments: 76, participation: 74, trend: "Rising" as const },
-  { name: "Meera Joshi", guardianName: "Pooja Joshi", phone: "9822455511", email: "meera@datavista.edu", marks: 66, attendance: 79, assignments: 71, participation: 69, trend: "Steady" as const },
-  { name: "Ishaan Roy", guardianName: "Sourav Roy", phone: "9900012345", email: "ishaan@datavista.edu", marks: 58, attendance: 67, assignments: 64, participation: 60, trend: "Falling" as const },
-  { name: "Sara Thomas", guardianName: "Joseph Thomas", phone: "9745621300", email: "sara@datavista.edu", marks: 88, attendance: 92, assignments: 91, participation: 84, trend: "Rising" as const },
-  { name: "Vihaan Patel", guardianName: "Kiran Patel", phone: "9988776655", email: "vihaan@datavista.edu", marks: 77, attendance: 85, assignments: 73, participation: 71, trend: "Steady" as const },
-  { name: "Anika Bose", guardianName: "Sudipta Bose", phone: "9871002003", email: "anika@datavista.edu", marks: 95, attendance: 98, assignments: 96, participation: 91, trend: "Rising" as const },
-  { name: "Rohan Iyer", guardianName: "Lakshmi Iyer", phone: "9123456780", email: "rohan@datavista.edu", marks: 62, attendance: 70, assignments: 59, participation: 57, trend: "Falling" as const },
-  { name: "Tara Gupta", guardianName: "Nitin Gupta", phone: "9933557711", email: "tara@datavista.edu", marks: 81, attendance: 87, assignments: 83, participation: 76, trend: "Steady" as const },
+  { rollNo: "2513266", name: "Ayush Singh Kaintura", guardianName: "Mr. Kaintura", phone: "9812345601", email: "ayush@datavista.edu", marks: 91, attendance: 96, assignments: 94, participation: 88, trend: "Rising" as const },
+  { rollNo: "2510944", name: "Ayush Tiwari", guardianName: "Mr. Tiwari", phone: "9812345602", email: "ayush.t@datavista.edu", marks: 84, attendance: 89, assignments: 86, participation: 78, trend: "Steady" as const },
+  { rollNo: "2514027", name: "Charu Porwal", guardianName: "Mr. Porwal", phone: "9812345603", email: "charu@datavista.edu", marks: 73, attendance: 82, assignments: 76, participation: 74, trend: "Rising" as const },
+  { rollNo: "2512843", name: "Chehak Goyal", guardianName: "Mr. Goyal", phone: "9812345604", email: "chehak@datavista.edu", marks: 66, attendance: 79, assignments: 71, participation: 69, trend: "Steady" as const },
+  { rollNo: "2512265", name: "Deepti Patel", guardianName: "Mr. Patel", phone: "9812345605", email: "deepti@datavista.edu", marks: 58, attendance: 67, assignments: 64, participation: 60, trend: "Falling" as const },
+  { rollNo: "2512910", name: "Devansh Mehrotra", guardianName: "Mr. Mehrotra", phone: "9812345606", email: "devansh.m@datavista.edu", marks: 88, attendance: 92, assignments: 91, participation: 84, trend: "Rising" as const },
+  { rollNo: "2513654", name: "Devansh Mishra", guardianName: "Mr. Mishra", phone: "9812345607", email: "devansh.mi@datavista.edu", marks: 77, attendance: 85, assignments: 73, participation: 71, trend: "Steady" as const },
+  { rollNo: "2511682", name: "Devansh Singh", guardianName: "Mr. Singh", phone: "9812345608", email: "devansh.s@datavista.edu", marks: 95, attendance: 98, assignments: 96, participation: 91, trend: "Rising" as const },
+  { rollNo: "2510872", name: "Devesh Yadav", guardianName: "Mr. Yadav", phone: "9812345609", email: "devesh@datavista.edu", marks: 62, attendance: 70, assignments: 59, participation: 57, trend: "Falling" as const },
+  { rollNo: "2512226", name: "Dharti Nautiyal", guardianName: "Mr. Nautiyal", phone: "9812345610", email: "dharti@datavista.edu", marks: 81, attendance: 87, assignments: 83, participation: 76, trend: "Steady" as const },
+  { rollNo: "2512296", name: "Diksha Singh", guardianName: "Mr. Singh", phone: "9812345611", email: "diksha@datavista.edu", marks: 85, attendance: 90, assignments: 88, participation: 80, trend: "Rising" as const },
+  { rollNo: "2511581", name: "Dipali", guardianName: "Mr. Dipali", phone: "9812345612", email: "dipali@datavista.edu", marks: 76, attendance: 84, assignments: 80, participation: 75, trend: "Steady" as const },
+  { rollNo: "2513420", name: "Divyanshi Gupta", guardianName: "Mr. Gupta", phone: "9812345613", email: "divyanshi@datavista.edu", marks: 93, attendance: 97, assignments: 95, participation: 89, trend: "Rising" as const },
+  { rollNo: "2513323", name: "Divyanshu Mishra", guardianName: "Mr. Mishra", phone: "9812345614", email: "divyanshu.m@datavista.edu", marks: 64, attendance: 72, assignments: 68, participation: 62, trend: "Falling" as const },
+  { rollNo: "2510505", name: "Divyanshu Prajapati", guardianName: "Mr. Prajapati", phone: "9812345615", email: "divyanshu.p@datavista.edu", marks: 78, attendance: 83, assignments: 75, participation: 72, trend: "Steady" as const },
+  { rollNo: "2511068", name: "Eshan Srivastava", guardianName: "Mr. Srivastava", phone: "9812345616", email: "eshan@datavista.edu", marks: 89, attendance: 91, assignments: 87, participation: 85, trend: "Rising" as const },
+  { rollNo: "2513249", name: "Gaurav Kumar", guardianName: "Mr. Kumar", phone: "9812345617", email: "gaurav@datavista.edu", marks: 60, attendance: 68, assignments: 62, participation: 58, trend: "Falling" as const },
+  { rollNo: "2513818", name: "Gauri Srivastava", guardianName: "Mr. Srivastava", phone: "9812345618", email: "gauri@datavista.edu", marks: 82, attendance: 88, assignments: 84, participation: 79, trend: "Steady" as const },
+  { rollNo: "2512325", name: "Gopal Jee", guardianName: "Mr. Jee", phone: "9812345619", email: "gopal@datavista.edu", marks: 71, attendance: 78, assignments: 72, participation: 68, trend: "Steady" as const },
+  { rollNo: "2514230", name: "Gyan Aryan", guardianName: "Mr. Aryan", phone: "9812345620", email: "gyan@datavista.edu", marks: 87, attendance: 93, assignments: 89, participation: 82, trend: "Rising" as const },
+  { rollNo: "2512301", name: "Harshit Singh Chauhan", guardianName: "Mr. Chauhan", phone: "9812345621", email: "harshit@datavista.edu", marks: 92, attendance: 95, assignments: 93, participation: 87, trend: "Rising" as const },
+  { rollNo: "2513884", name: "Harshita Jaiswal", guardianName: "Mr. Jaiswal", phone: "9812345622", email: "harshita@datavista.edu", marks: 68, attendance: 75, assignments: 70, participation: 65, trend: "Steady" as const },
+  { rollNo: "2513467", name: "Himanshu Raja", guardianName: "Mr. Raja", phone: "9812345623", email: "himanshu@datavista.edu", marks: 74, attendance: 81, assignments: 78, participation: 73, trend: "Steady" as const },
+  { rollNo: "2512143", name: "Irtiga Nazim", guardianName: "Mr. Nazim", phone: "9812345624", email: "irtiga@datavista.edu", marks: 86, attendance: 90, assignments: 85, participation: 81, trend: "Rising" as const },
+  { rollNo: "2513128", name: "Ishan Kumar Singh", guardianName: "Mr. Singh", phone: "9812345625", email: "ishan@datavista.edu", marks: 63, attendance: 69, assignments: 60, participation: 59, trend: "Falling" as const },
+  { rollNo: "2510155", name: "Ishika Goyal", guardianName: "Mr. Goyal", phone: "9812345626", email: "ishika@datavista.edu", marks: 90, attendance: 94, assignments: 92, participation: 86, trend: "Rising" as const },
+  { rollNo: "2511360", name: "Ishika Mishra", guardianName: "Mr. Mishra", phone: "9812345627", email: "ishika.m@datavista.edu", marks: 79, attendance: 86, assignments: 82, participation: 77, trend: "Steady" as const },
+  { rollNo: "2513449", name: "Jagrati Ramchandani", guardianName: "Mr. Ramchandani", phone: "9812345628", email: "jagrati@datavista.edu", marks: 83, attendance: 89, assignments: 86, participation: 80, trend: "Rising" as const },
+  { rollNo: "2511415", name: "Jasmeet Singh Bedi", guardianName: "Mr. Bedi", phone: "9812345629", email: "jasmeet@datavista.edu", marks: 59, attendance: 66, assignments: 63, participation: 61, trend: "Falling" as const },
+  { rollNo: "2513060", name: "Kajal Pal", guardianName: "Mr. Pal", phone: "9812345630", email: "kajal@datavista.edu", marks: 75, attendance: 82, assignments: 79, participation: 74, trend: "Steady" as const },
+  { rollNo: "2511404", name: "Kartik Mishra", guardianName: "Mr. Mishra", phone: "9812345631", email: "kartik.m@datavista.edu", marks: 88, attendance: 91, assignments: 88, participation: 83, trend: "Rising" as const },
+  { rollNo: "2513513", name: "Kartik Verma", guardianName: "Mr. Verma", phone: "9812345632", email: "kartik.v@datavista.edu", marks: 94, attendance: 98, assignments: 96, participation: 90, trend: "Rising" as const },
+  { rollNo: "2510827", name: "Kartikey Pandey", guardianName: "Mr. Pandey", phone: "9812345633", email: "kartikey@datavista.edu", marks: 67, attendance: 76, assignments: 72, participation: 67, trend: "Steady" as const },
+  { rollNo: "2512784", name: "Kavya Awasthi", guardianName: "Mr. Awasthi", phone: "9812345634", email: "kavya.a@datavista.edu", marks: 80, attendance: 85, assignments: 81, participation: 76, trend: "Steady" as const },
+  { rollNo: "2512953", name: "Kavya Pratap Singh", guardianName: "Mr. Singh", phone: "9812345635", email: "kavya.s@datavista.edu", marks: 72, attendance: 80, assignments: 74, participation: 70, trend: "Steady" as const },
+  { rollNo: "2511651", name: "Kavya Singh", guardianName: "Mr. Singh", phone: "9812345636", email: "kavya@datavista.edu", marks: 61, attendance: 68, assignments: 65, participation: 60, trend: "Falling" as const },
+  { rollNo: "2510697", name: "Khushi Shukla", guardianName: "Mr. Shukla", phone: "9812345637", email: "khushi@datavista.edu", marks: 87, attendance: 93, assignments: 90, participation: 84, trend: "Rising" as const },
+  { rollNo: "2513275", name: "Kiran Shukla", guardianName: "Mr. Shukla", phone: "9812345638", email: "kiran@datavista.edu", marks: 78, attendance: 84, assignments: 77, participation: 72, trend: "Steady" as const },
+  { rollNo: "2512234", name: "Krishan Bhattacharya", guardianName: "Mr. Bhattacharya", phone: "9812345639", email: "krishan@datavista.edu", marks: 91, attendance: 96, assignments: 94, participation: 88, trend: "Rising" as const },
+  { rollNo: "2514002", name: "Krishna Gupta", guardianName: "Mr. Gupta", phone: "9812345640", email: "krishna@datavista.edu", marks: 57, attendance: 65, assignments: 58, participation: 55, trend: "Falling" as const },
+  { rollNo: "2510046", name: "Krishna Kumar", guardianName: "Mr. Kumar", phone: "9812345641", email: "krishna.k@datavista.edu", marks: 73, attendance: 81, assignments: 76, participation: 71, trend: "Steady" as const },
+  { rollNo: "2513436", name: "Krishna Sahu", guardianName: "Mr. Sahu", phone: "9812345642", email: "krishna.s@datavista.edu", marks: 82, attendance: 87, assignments: 83, participation: 78, trend: "Steady" as const },
+  { rollNo: "2511716", name: "Kriti Jaiswal", guardianName: "Mr. Jaiswal", phone: "9812345643", email: "kriti@datavista.edu", marks: 96, attendance: 99, assignments: 97, participation: 92, trend: "Rising" as const },
+  { rollNo: "2512363", name: "Kshama Pal", guardianName: "Mr. Pal", phone: "9812345644", email: "kshama@datavista.edu", marks: 65, attendance: 74, assignments: 69, participation: 64, trend: "Steady" as const },
+  { rollNo: "2513812", name: "Kushagra Agrawal", guardianName: "Mr. Agrawal", phone: "9812345645", email: "kushagra.a@datavista.edu", marks: 84, attendance: 89, assignments: 86, participation: 81, trend: "Rising" as const },
+  { rollNo: "2510145", name: "Kushagra Dixit", guardianName: "Mr. Dixit", phone: "9812345646", email: "kushagra.d@datavista.edu", marks: 70, attendance: 78, assignments: 73, participation: 69, trend: "Steady" as const },
+  { rollNo: "2511280", name: "Lav Pal", guardianName: "Mr. Pal", phone: "9812345647", email: "lav@datavista.edu", marks: 56, attendance: 63, assignments: 57, participation: 54, trend: "Falling" as const },
+  { rollNo: "2513399", name: "Madhur Mishra", guardianName: "Mr. Mishra", phone: "9812345648", email: "madhur@datavista.edu", marks: 89, attendance: 92, assignments: 90, participation: 85, trend: "Rising" as const },
+  { rollNo: "2512675", name: "Manya Mishra", guardianName: "Mr. Mishra", phone: "9812345649", email: "manya@datavista.edu", marks: 77, attendance: 85, assignments: 80, participation: 75, trend: "Steady" as const },
+  { rollNo: "2513786", name: "Mayank Srivastava", guardianName: "Mr. Srivastava", phone: "9812345650", email: "mayank@datavista.edu", marks: 93, attendance: 96, assignments: 95, participation: 89, trend: "Rising" as const },
+  { rollNo: "2510431", name: "Mohan Singh", guardianName: "Mr. Singh", phone: "9812345651", email: "mohan@datavista.edu", marks: 69, attendance: 77, assignments: 72, participation: 68, trend: "Steady" as const },
+  { rollNo: "2510520", name: "Mohd Saad", guardianName: "Mr. Saad", phone: "9812345652", email: "saad@datavista.edu", marks: 81, attendance: 88, assignments: 84, participation: 79, trend: "Steady" as const },
+  { rollNo: "2514011", name: "Mohd Wamiq Siddiqui", guardianName: "Mr. Siddiqui", phone: "9812345653", email: "wamiq@datavista.edu", marks: 74, attendance: 82, assignments: 77, participation: 72, trend: "Steady" as const },
+  { rollNo: "2512699", name: "Naincy", guardianName: "Mr. Naincy", phone: "9812345654", email: "naincy@datavista.edu", marks: 62, attendance: 71, assignments: 64, participation: 61, trend: "Falling" as const },
+  { rollNo: "2514048", name: "Nainsi Verma", guardianName: "Mr. Verma", phone: "9812345655", email: "nainsi@datavista.edu", marks: 86, attendance: 90, assignments: 87, participation: 82, trend: "Rising" as const },
+  { rollNo: "2511523", name: "Naitik Gupta", guardianName: "Mr. Gupta", phone: "9812345656", email: "naitik@datavista.edu", marks: 76, attendance: 84, assignments: 79, participation: 74, trend: "Steady" as const },
+  { rollNo: "2512027", name: "Namita Prakash Dwivedi", guardianName: "Mr. Dwivedi", phone: "9812345657", email: "namita@datavista.edu", marks: 90, attendance: 95, assignments: 92, participation: 87, trend: "Rising" as const },
+  { rollNo: "2513342", name: "Nandani Gupta", guardianName: "Mr. Gupta", phone: "9812345658", email: "nandani@datavista.edu", marks: 55, attendance: 62, assignments: 56, participation: 53, trend: "Falling" as const },
+  { rollNo: "2512400", name: "Nandini Gupta", guardianName: "Mr. Gupta", phone: "9812345659", email: "nandini.g@datavista.edu", marks: 83, attendance: 89, assignments: 85, participation: 80, trend: "Rising" as const },
+  { rollNo: "2510667", name: "Nandini Sahu", guardianName: "Mr. Sahu", phone: "9812345660", email: "nandini.s@datavista.edu", marks: 71, attendance: 79, assignments: 75, participation: 70, trend: "Steady" as const },
 ];
 
 function round(value: number) {
@@ -262,7 +332,7 @@ function createAssignmentStats(assignmentCompletion: number, offset: number): As
 }
 
 function createStudent(profile: (typeof seedProfiles)[number], index: number): Student {
-  const rollNo = `${101 + index}`;
+  const rollNo = profile.rollNo;
   const subjectScores = createSubjectScores(profile.marks, index % 4);
   const examScores = createExamScores(subjectScores, profile.trend);
   const overall = round(profile.marks * 0.6 + profile.assignments * 0.25 + profile.attendance * 0.15);
@@ -294,34 +364,71 @@ function createStudent(profile: (typeof seedProfiles)[number], index: number): S
 
 function createSeedAssignments(totalStudents: number): AssignmentItem[] {
   return [
-    { id: "asg-1", title: "Linear Equations Worksheet", subject: "Mathematics", dueDate: "2026-04-05", totalStudents, submitted: 8, onTime: 7, late: 1 },
-    { id: "asg-2", title: "Lab Observation Report", subject: "Science", dueDate: "2026-04-08", totalStudents, submitted: 7, onTime: 6, late: 1 },
-    { id: "asg-3", title: "Reading Reflection", subject: "English", dueDate: "2026-04-11", totalStudents, submitted: 9, onTime: 8, late: 1 },
-    { id: "asg-4", title: "Civics Presentation Deck", subject: "Social Studies", dueDate: "2026-04-14", totalStudents, submitted: 6, onTime: 5, late: 1 },
-    { id: "asg-5", title: "Spreadsheet Dashboard", subject: "Computer", dueDate: "2026-04-18", totalStudents, submitted: 8, onTime: 8, late: 0 },
+    { id: "asg-1", title: "Linear Equations Worksheet", subject: "Mathematics", dueDate: "2026-04-05", totalStudents, submitted: Math.round(totalStudents * 0.9), onTime: Math.round(totalStudents * 0.8), late: Math.round(totalStudents * 0.1) },
+    { id: "asg-2", title: "Lab Observation Report", subject: "Science", dueDate: "2026-04-08", totalStudents, submitted: Math.round(totalStudents * 0.85), onTime: Math.round(totalStudents * 0.75), late: Math.round(totalStudents * 0.1) },
+    { id: "asg-3", title: "Reading Reflection", subject: "English", dueDate: "2026-04-11", totalStudents, submitted: Math.round(totalStudents * 0.95), onTime: Math.round(totalStudents * 0.85), late: Math.round(totalStudents * 0.1) },
+    { id: "asg-4", title: "Civics Presentation Deck", subject: "Social Studies", dueDate: "2026-04-14", totalStudents, submitted: Math.round(totalStudents * 0.8), onTime: Math.round(totalStudents * 0.7), late: Math.round(totalStudents * 0.1) },
+    { id: "asg-5", title: "Spreadsheet Dashboard", subject: "Computer", dueDate: "2026-04-18", totalStudents, submitted: Math.round(totalStudents * 0.92), onTime: Math.round(totalStudents * 0.88), late: Math.round(totalStudents * 0.04) },
   ];
 }
 
-export function createSeedState(): DataVistaState {
-  return {
-    students: [],
-    assignments: [],
-    settings: normalizeSettings(),
+function createSeedTimetable(): TimetableDay[] {
+  type DayName = TimetableDay["day"];
+  const DAYS: DayName[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const TIMES = [
+    ["09:00", "09:45"],
+    ["09:45", "10:30"],
+    ["10:45", "11:30"],
+    ["11:30", "12:15"],
+    ["13:00", "13:45"],
+    ["13:45", "14:30"],
+  ];
+  // Subject rotation per day (period 1-6)
+  const SCHEDULE: Subject[][] = [
+    ["Mathematics", "Science", "English", "Social Studies", "Computer", "Mathematics"],
+    ["English", "Mathematics", "Computer", "Science", "Social Studies", "English"],
+    ["Science", "Social Studies", "Mathematics", "English", "Mathematics", "Computer"],
+    ["Computer", "English", "Social Studies", "Mathematics", "Science", "Social Studies"],
+    ["Social Studies", "Computer", "Science", "Computer", "English", "Science"],
+  ];
+  const TOPICS: Record<Subject, string[]> = {
+    Mathematics: ["Algebra Basics", "Linear Equations", "Quadratic Equations", "Polynomials", "Geometry Intro", "Triangles", "Circles", "Coordinate Geometry", "Statistics", "Probability"],
+    Science: ["Matter & Properties", "Atoms & Molecules", "Motion & Force", "Work & Energy", "Light & Optics", "Electricity", "Magnetism", "Cell Biology", "Reproduction", "Ecosystems"],
+    English: ["Reading Comprehension", "Essay Writing", "Grammar — Tenses", "Vocabulary", "Prose Analysis", "Poetry", "Letter Writing", "Speech", "Novel Study", "Revision"],
+    "Social Studies": ["Ancient Civilizations", "Medieval History", "Modern History", "Geography — Maps", "Physical Geography", "Climate Zones", "Civics & Constitution", "Economy Basics", "Globalisation", "Current Affairs"],
+    Computer: ["Intro to Computers", "Operating Systems", "MS Office", "Internet Basics", "HTML Basics", "Python Intro", "Variables & Data Types", "Loops & Functions", "Database Basics", "Cybersecurity"],
   };
+  const topicIndex: Record<Subject, number> = { Mathematics: 0, Science: 0, English: 0, "Social Studies": 0, Computer: 0 };
+
+  return DAYS.map((day, dayIdx) => ({
+    day,
+    slots: SCHEDULE[dayIdx].map((subject, periodIdx) => {
+      const tIdx = topicIndex[subject] % TOPICS[subject].length;
+      const topic = TOPICS[subject][tIdx];
+      topicIndex[subject]++;
+      return {
+        id: `${day}-p${periodIdx + 1}`,
+        period: periodIdx + 1,
+        subject,
+        topic,
+        totalTopics: TOPICS[subject].length,
+        completedTopics: periodIdx < 2 && dayIdx < 3 ? tIdx + 1 : tIdx,
+        status: (periodIdx < 2 && dayIdx < 3 ? "done" : "pending") as LectureStatus,
+        startTime: TIMES[periodIdx][0],
+        endTime: TIMES[periodIdx][1],
+      };
+    }),
+  }));
 }
 
-function isLegacySeedState(state: DataVistaState) {
-  const legacyStudents = seedProfiles.map((profile) => profile.name).sort();
-  const currentStudents = state.students.map((student) => student.name).sort();
-  const legacyAssignmentIds = createSeedAssignments(seedProfiles.length).map((assignment) => assignment.id).sort();
-  const currentAssignmentIds = state.assignments.map((assignment) => assignment.id).sort();
-
-  return (
-    currentStudents.length === legacyStudents.length &&
-    currentStudents.every((name, index) => name === legacyStudents[index]) &&
-    currentAssignmentIds.length === legacyAssignmentIds.length &&
-    currentAssignmentIds.every((id, index) => id === legacyAssignmentIds[index])
-  );
+export function createSeedState(): DataVistaState {
+  const students = seedProfiles.map((p, i) => createStudent(p, i));
+  return {
+    students,
+    assignments: createSeedAssignments(students.length),
+    settings: normalizeSettings(),
+    timetable: createSeedTimetable(),
+  };
 }
 
 function resolveTeacherStorageKey(teacher?: string | Pick<Teacher, "id" | "email" | "username">) {
@@ -347,7 +454,8 @@ export function loadState(teacher?: string | Pick<Teacher, "id" | "email" | "use
     if (!raw) return createSeedState();
     const parsed = JSON.parse(raw) as DataVistaState;
     if (!isStateShape(parsed) || !parsed.students?.length) return createSeedState();
-    if (isLegacySeedState(parsed)) return createSeedState();
+    // We removed the legacy state wipe here so that current 10-student state can be updated manually
+    // or reset by the user to get the 40-student state.
     return normalizeState(parsed);
   } catch {
     return createSeedState();
