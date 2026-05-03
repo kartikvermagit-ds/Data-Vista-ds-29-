@@ -18,7 +18,7 @@ const DEFAULT_TEACHERS: TeacherAccount[] = [
 ];
 
 const inputClass =
-  "h-12 w-full rounded-lg border border-[#222222] bg-[#111111]/90 px-4 text-sm text-[#EDEDED] placeholder:text-[#555555] caret-[#C0A062] outline-none transition-[border-color,box-shadow,background-color,color] [transition-duration:250ms] ease-in-out hover:border-[#C0A062] hover:bg-[#15120B] hover:shadow-[0_0_0_1px_rgba(192,160,98,0.28),0_0_18px_rgba(192,160,98,0.1)] focus:border-[#C0A062] focus:bg-[#15120B] focus:shadow-[0_0_0_1px_rgba(192,160,98,0.42),0_0_16px_rgba(192,160,98,0.12)]";
+  "h-12 w-full rounded-lg border border-[#222222] bg-[#111111]/90 px-4 text-sm text-slate-800 dark:text-[#EDEDED] placeholder:text-[#555555] caret-[#C0A062] outline-none transition-[border-color,box-shadow,background-color,color] [transition-duration:250ms] ease-in-out hover:border-[#C0A062] hover:bg-[#15120B] hover:shadow-[0_0_0_1px_rgba(192,160,98,0.28),0_0_18px_rgba(192,160,98,0.1)] focus:border-[#C0A062] focus:bg-[#15120B] focus:shadow-[0_0_0_1px_rgba(192,160,98,0.42),0_0_16px_rgba(192,160,98,0.12)]";
 
 const actionButtonClass =
   "mt-2 flex h-12 w-full transform-gpu items-center justify-center gap-2 rounded-lg bg-[#EDEDED] text-[11px] font-semibold uppercase tracking-[0.3em] text-black shadow-[0_0_0_rgba(192,160,98,0)] transition-all duration-300 ease-in-out hover:scale-[1.02] hover:bg-[#D7C39A] hover:shadow-[0_8px_24px_rgba(192,160,98,0.16)]";
@@ -272,11 +272,11 @@ export default function LoginPage({ onLogin }: Props) {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0A0A] px-6 py-12 text-[#EDEDED]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(192,160,98,0.12),transparent_28%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_42%),linear-gradient(180deg,#050505_0%,#0A0A0A_42%,#070707_100%)]" />
-      <div className="absolute top-1/2 left-0 h-[800px] w-[800px] -translate-x-[60%] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
-      <div className="absolute top-1/2 right-0 h-[800px] w-[800px] translate-x-[60%] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_42%,rgba(0,0,0,0.62)_100%)]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0A0A] px-6 py-12 text-slate-800 dark:text-[#EDEDED]">
+      <div className="absolute inset-0 bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_50%_18%,rgba(192,160,98,0.12),transparent_28%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_42%),linear-gradient(180deg,#050505_0%,#0A0A0A_42%,#070707_100%)]" />
+      <div className="absolute top-1/2 left-0 h-[800px] w-[800px] -translate-x-[60%] -translate-y-1/2 rounded-full bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
+      <div className="absolute top-1/2 right-0 h-[800px] w-[800px] translate-x-[60%] -translate-y-1/2 rounded-full bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_center,transparent_42%,rgba(0,0,0,0.62)_100%)]" />
       <div
         className="absolute inset-0 opacity-[0.045] mix-blend-soft-light"
         style={{
@@ -291,7 +291,7 @@ export default function LoginPage({ onLogin }: Props) {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="relative z-10 w-full max-w-[28rem]"
       >
-        <div className="rounded-[28px] border border-white/8 bg-[rgba(12,12,12,0.82)] px-7 py-8 shadow-[0_40px_120px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:px-9 sm:py-10">
+        <div className="rounded-[28px] border border-white/8 bg-white/80 dark:bg-[rgba(12,12,12,0.82)] px-7 py-8 shadow-[0_40px_120px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:px-9 sm:py-10">
           <div className="mb-10 flex flex-col items-center text-center">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -315,21 +315,21 @@ export default function LoginPage({ onLogin }: Props) {
               </span>
             </motion.h1>
             <div className="mt-4 h-px w-24 bg-gradient-to-r from-transparent via-[#C0A062] to-transparent opacity-80" />
-            <p className="mt-4 text-[11px] uppercase tracking-[0.35em] text-[#EDEDED]/48">Class Performance Analyzer</p>
+            <p className="mt-4 text-[11px] uppercase tracking-[0.35em] text-slate-800 dark:text-[#EDEDED]/48">Class Performance Analyzer</p>
           </div>
 
           <div className="mb-8 grid grid-cols-2 rounded-xl border border-white/8 bg-white/[0.025] p-1">
             <button
               type="button"
               onClick={() => switchMode("signin")}
-              className={`${modeButtonClass} ${mode === "signin" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-[#EDEDED]"}`}
+              className={`${modeButtonClass} ${mode === "signin" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-slate-800 dark:text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-slate-800 dark:text-[#EDEDED]"}`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => switchMode("signup")}
-              className={`${modeButtonClass} ${mode === "signup" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-[#EDEDED]"}`}
+              className={`${modeButtonClass} ${mode === "signup" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-slate-800 dark:text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-slate-800 dark:text-[#EDEDED]"}`}
             >
               Sign Up
             </button>
@@ -371,7 +371,7 @@ export default function LoginPage({ onLogin }: Props) {
                   <button
                     type="button"
                     onClick={() => setShowPass((value) => !value)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 transform-gpu text-[#EDEDED]/42 transition-all duration-300 ease-in-out hover:scale-110 hover:text-[#C0A062] hover:brightness-125"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 transform-gpu text-slate-800 dark:text-[#EDEDED]/42 transition-all duration-300 ease-in-out hover:scale-110 hover:text-[#C0A062] hover:brightness-125"
                     aria-label={showPass ? "Hide password" : "Show password"}
                   >
                     {showPass ? <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.6} /> : <Eye className="h-[17px] w-[17px]" strokeWidth={1.6} />}
@@ -495,7 +495,7 @@ export default function LoginPage({ onLogin }: Props) {
                       setStatus("");
                       setSignUp((current) => ({ ...current, otp: "" }));
                     }}
-                    className="h-12 rounded-lg border border-white/10 px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#EDEDED]/80 transition-colors hover:bg-white/[0.04]"
+                    className="h-12 rounded-lg border border-white/10 px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-800 dark:text-[#EDEDED]/80 transition-colors hover:bg-white/[0.04]"
                   >
                     Resend OTP
                   </motion.button>
@@ -556,7 +556,7 @@ function normalizePhone(value: string) {
 function AuthField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="group">
-      <label className="mb-2.5 block text-[11px] font-medium uppercase tracking-[0.24em] text-[#EDEDED]/60 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
+      <label className="mb-2.5 block text-[11px] font-medium uppercase tracking-[0.24em] text-slate-800 dark:text-[#EDEDED]/60 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
         {label}
       </label>
       {children}
