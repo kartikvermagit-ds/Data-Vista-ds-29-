@@ -20,7 +20,8 @@ const DEFAULT_TEACHERS: TeacherAccount[] = [
 ];
 
 const inputClass =
-  "h-12 w-full rounded-lg border border-[#222222] bg-[#111111]/90 px-4 text-sm text-slate-800 dark:text-[#EDEDED] placeholder:text-[#555555] caret-[#C0A062] outline-none transition-[border-color,box-shadow,background-color,color] [transition-duration:250ms] ease-in-out hover:border-[#C0A062] hover:bg-[#15120B] hover:shadow-[0_0_0_1px_rgba(192,160,98,0.28),0_0_18px_rgba(192,160,98,0.1)] focus:border-[#C0A062] focus:bg-[#15120B] focus:shadow-[0_0_0_1px_rgba(192,160,98,0.42),0_0_16px_rgba(192,160,98,0.12)]";
+  "h-12 w-full rounded-lg border border-[#222222] bg-[#111111]/90 px-4 text-sm text-[#EDEDED] placeholder:text-[#555555] caret-[#C0A062] outline-none transition-[border-color,box-shadow,background-color,color] [transition-duration:250ms] ease-in-out hover:border-[#C0A062] hover:bg-[#15120B] hover:shadow-[0_0_0_1px_rgba(192,160,98,0.28),0_0_18px_rgba(192,160,98,0.1)] focus:border-[#C0A062] focus:bg-[#15120B] focus:shadow-[0_0_0_1px_rgba(192,160,98,0.42),0_0_16px_rgba(192,160,98,0.12)]";
+
 
 const actionButtonClass =
   "mt-2 flex h-12 w-full transform-gpu items-center justify-center gap-2 rounded-lg bg-[#EDEDED] text-[11px] font-semibold uppercase tracking-[0.3em] text-black shadow-[0_0_0_rgba(192,160,98,0)] transition-all duration-300 ease-in-out hover:scale-[1.02] hover:bg-[#D7C39A] hover:shadow-[0_8px_24px_rgba(192,160,98,0.16)]";
@@ -295,7 +296,7 @@ export default function LoginPage({ onLogin }: Props) {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="relative z-10 w-full max-w-[28rem]"
       >
-        <div className="rounded-[28px] border border-white/8 bg-white/80 dark:bg-[rgba(12,12,12,0.82)] px-7 py-8 shadow-[0_40px_120px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:px-9 sm:py-10">
+        <div className="rounded-[28px] border border-white/8 bg-[rgba(12,12,12,0.82)] px-7 py-8 shadow-[0_40px_120px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:px-9 sm:py-10">
           <div className="mb-10 flex flex-col items-center text-center">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
