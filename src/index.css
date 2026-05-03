@@ -410,3 +410,13 @@ model-viewer {
   color: #EDEDED !important;
 }
 
+@keyframes goldGlow {
+  0%, 100% {
+    text-shadow: 0 0 6px rgba(234,179,8,0.6);
+    filter: drop-shadow(0 0 6px rgba(234,179,8,0.6));
+  }
+  50% {
+    text-shadow: 0 0 14px rgba(234,179,8,1);
+    filter: drop-shadow(0 0 14px rgba(234,179,8,1));
+  }
+}
