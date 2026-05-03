@@ -27,8 +27,8 @@ export function DevelopersFooter() {
   return (
     <footer className="mt-12 pt-8 border-t border-[#C0A062]/10">
       <div className="flex flex-col items-center gap-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-[#8F856F] font-medium">
-          Crafted with ❤️ & Developed by
+        <p className="text-xs uppercase tracking-[0.3em] text-[#A7A093] font-medium opacity-80">
+          Crafted with ❤️ & Developed by 
         </p>
 
         <div className="flex flex-wrap justify-center gap-8 md:gap-12">
@@ -48,20 +48,22 @@ export function DevelopersFooter() {
                 </div>
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-[#F5F0E6] group-hover:text-[#C0A062] transition-colors">
+                <h4 className="text-sm font-semibold text-[#F5F0E6] group-hover:text-[#C0A062] transition-colors">
                   {dev.name}
                 </h4>
-                <p className="mt-1 max-w-[150px] text-[10px] leading-tight text-slate-500 dark:text-[#A7A093] opacity-80 uppercase tracking-wider">
+                <p className="mt-1 max-w-[150px] text-[10px] leading-tight text-[#A7A093] opacity-80 uppercase tracking-wider">
                   {dev.role}
                 </p>
+
               </div>
             </div>
           ))}
         </div>
 
-        <p className="mt-4 text-[10px] text-slate-500 dark:text-[#5F584C] tracking-widest uppercase">
+        <p className="mt-4 text-[10px] text-[#5F584C] tracking-widest uppercase">
           &copy; 2026 DataVista Intelligence. All Rights Reserved.
         </p>
+
       </div>
     </footer>
   );

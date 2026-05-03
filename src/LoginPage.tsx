@@ -274,18 +274,20 @@ export default function LoginPage({ onLogin }: Props) {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0A0A] px-6 py-12 text-slate-800 dark:text-[#EDEDED]">
-      <div className="absolute inset-0 bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_50%_18%,rgba(192,160,98,0.12),transparent_28%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_42%),linear-gradient(180deg,#050505_0%,#0A0A0A_42%,#070707_100%)]" />
-      <div className="absolute top-1/2 left-0 h-[800px] w-[800px] -translate-x-[60%] -translate-y-1/2 rounded-full bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
-      <div className="absolute top-1/2 right-0 h-[800px] w-[800px] translate-x-[60%] -translate-y-1/2 rounded-full bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[#f4f2ee] dark:bg-[radial-gradient(circle_at_center,transparent_42%,rgba(0,0,0,0.62)_100%)]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-6 py-12 text-[#EDEDED]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(192,160,98,0.12),transparent_28%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_42%),linear-gradient(180deg,#050505_0%,#0A0A0A_42%,#070707_100%)]" />
+      <div className="absolute top-1/2 left-0 h-[800px] w-[800px] -translate-x-[60%] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
+      <div className="absolute top-1/2 right-0 h-[800px] w-[800px] translate-x-[60%] -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(192,160,98,0.15),transparent_60%)] blur-[80px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_42%,rgba(0,0,0,0.62)_100%)]" />
+
       <div
-        className="absolute inset-0 opacity-[0.045] mix-blend-soft-light"
+        className="absolute inset-0 opacity-[0.06] mix-blend-overlay"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")",
         }}
       />
+
 
       <motion.div
         initial={{ opacity: 0, y: 40, scale: 0.95 }}
@@ -317,21 +319,24 @@ export default function LoginPage({ onLogin }: Props) {
               </span>
             </motion.h1>
             <div className="mt-4 h-px w-24 bg-gradient-to-r from-transparent via-[#C0A062] to-transparent opacity-80" />
-            <p className="mt-4 text-[11px] uppercase tracking-[0.35em] text-slate-800 dark:text-[#EDEDED]/48">Class Performance Analyzer</p>
+            <p className="mt-4 text-[11px] uppercase tracking-[0.35em] text-[#EDEDED]/60 font-medium">Class Performance Analyzer</p>
+
           </div>
 
           <div className="mb-8 grid grid-cols-2 rounded-xl border border-white/8 bg-white/[0.025] p-1">
             <button
               type="button"
               onClick={() => switchMode("signin")}
-              className={`${modeButtonClass} ${mode === "signin" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-slate-800 dark:text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-slate-800 dark:text-[#EDEDED]"}`}
+              className={`${modeButtonClass} ${mode === "signin" ? "bg-[#EDEDED] text-black shadow-[0_4px_12px_rgba(0,0,0,0.3)]" : "text-[#EDEDED]/40 hover:text-[#EDEDED] hover:bg-white/5"}`}
+
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => switchMode("signup")}
-              className={`${modeButtonClass} ${mode === "signup" ? "bg-[#EDEDED] text-black hover:scale-[1.02] hover:bg-[#EDEDED]" : "text-slate-800 dark:text-[#EDEDED]/48 hover:scale-[1.02] hover:bg-white/[0.04] hover:text-slate-800 dark:text-[#EDEDED]"}`}
+              className={`${modeButtonClass} ${mode === "signup" ? "bg-[#EDEDED] text-black shadow-[0_4px_12px_rgba(0,0,0,0.3)]" : "text-[#EDEDED]/40 hover:text-[#EDEDED] hover:bg-white/5"}`}
+
             >
               Sign Up
             </button>
@@ -562,7 +567,8 @@ function normalizePhone(value: string) {
 function AuthField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="group">
-      <label className="mb-2.5 block text-[11px] font-medium uppercase tracking-[0.24em] text-slate-800 dark:text-[#EDEDED]/60 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
+      <label className="mb-2.5 block text-[11px] font-medium uppercase tracking-[0.24em] text-[#EDEDED]/60 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
+
         {label}
       </label>
       {children}
