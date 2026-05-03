@@ -398,3 +398,15 @@ model-viewer {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
+
+/* Recharts Tooltip Fixes */
+.recharts-default-tooltip {
+  color: #EDEDED !important;
+}
+.recharts-tooltip-item-name,
+.recharts-tooltip-item-value,
+.recharts-tooltip-item-separator,
+.recharts-tooltip-label {
+  color: #EDEDED !important;
+}
+
