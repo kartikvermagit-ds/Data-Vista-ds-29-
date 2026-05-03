@@ -319,7 +319,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
           {active === "assignments" ? <AssignmentsPage assignments={state.assignments} data={assignmentsByStudent} onAddAssignment={() => setAddAssignmentOpen(true)} onDeleteAssignment={deleteAssignment} /> : null}
           {active === "predictions" && selected ? <PredictionsPage students={state.students} selected={selected} selectedId={selectedId} onSelect={setSelectedId} /> : null}
           {active === "insights" ? <InsightsPage insights={insights} classHealth={classHealth} scatter={scatter} students={state.students} /> : null}
-          {active === "timetable" ? <TimetablePage timetable={state.timetable ?? []} onUpdateSlot={(dayIdx, slotId, status) => setState((c) => ({ ...c, timetable: c.timetable.map((d, i) => i !== dayIdx ? d : { ...d, slots: d.slots.map((s) => s.id !== slotId ? s : { ...s, status, completedTopics: status === "done" ? Math.min(s.totalTopics, s.completedTopics + (s.status !== "done" ? 1 : 0)) : s.completedTopics }) }) }))} /> : null}
+          {active === "timetable" ? <TimetablePage timetable={state.timetable ?? []} onUpdateSlot={(dayIdx, slotId, status) => setState((c) => ({ ...c, timetable: c.timetable.map((d, i) => i !== dayIdx ? d : { ...d, slots: d.slots.map((s) => s.id !== slotId ? s : { ...s, status, completedTopics: status === "done" ? Math.min(s.totalTopics, s.completedTopics + (s.status !== "done" ? 1 : 0)) : s.completedTopics }) }) }))} subjects={state.settings.subjects ?? SUBJECTS} onUpdateSubjects={(subs) => setState(c => ({...c, settings: {...c.settings, subjects: subs}}))} /> : null}
           {active === "compare" && isElevated ? <ComparePage myClass={state} role={role} schoolName={state.settings.schoolName} /> : null}
           {active === "calculator" ? <CalculatorPage /> : null}
           {active === "settings" ? <SettingsPage settingsDraft={settingsDraft} setSettingsDraft={setSettingsDraft} saveSettings={saveSettings} exportCsv={exportCsv} exportBackup={exportBackup} resetDemo={resetDemo} deleteAccount={deleteAccount} /> : null}
@@ -496,9 +496,13 @@ const subjectColors: Record<string, string> = {
 function TimetablePage({
   timetable,
   onUpdateSlot,
+  subjects,
+  onUpdateSubjects,
 }: {
   timetable: TimetableDay[];
   onUpdateSlot: (dayIdx: number, slotId: string, status: LectureStatus) => void;
+  subjects: string[];
+  onUpdateSubjects: (subs: string[]) => void;
 }) {
   const todayName = (["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()] ?? "Mon") as TimetableDay["day"];
   const validDays = timetable.map((d) => d.day);
@@ -509,13 +513,26 @@ function TimetablePage({
   const dayData = timetable[dayIdx];
 
   // Syllabus coverage per subject across ALL days
-  const coverage = SUBJECTS.map((sub) => {
+  const coverage = subjects.map((sub) => {
     const allSlots = timetable.flatMap((d) => d.slots).filter((s) => s.subject === sub);
     const done = allSlots.filter((s) => s.status === "done").length;
     const total = allSlots.length;
     const pct = total ? Math.round((done / total) * 100) : 0;
     return { subject: sub, done, total, pct };
   });
+
+  const [newSubject, setNewSubject] = useState("");
+
+  const addSubject = () => {
+    if (newSubject.trim() !== "" && !subjects.includes(newSubject.trim())) {
+      onUpdateSubjects([...subjects, newSubject.trim()]);
+      setNewSubject("");
+    }
+  };
+
+  const deleteSubject = (subject: string) => {
+    onUpdateSubjects(subjects.filter((s) => s !== subject));
+  };
 
   const overallDone = timetable.flatMap((d) => d.slots).filter((s) => s.status === "done").length;
   const overallTotal = timetable.flatMap((d) => d.slots).length;
@@ -539,6 +556,40 @@ function TimetablePage({
 
   return (
     <div className="space-y-6">
+      <div className="rounded-[24px] border border-[#C0A062]/18 bg-[#0E0C0A] p-4 sm:p-5 xl:p-6">
+        <h2 className="mb-3 text-xl font-semibold text-slate-900 dark:text-[#F5E8C8]">Manage Subjects</h2>
+        <div className="mb-4 flex gap-2">
+          <Input
+            value={newSubject}
+            onChange={(e) => setNewSubject(e.target.value)}
+            placeholder="Enter subject"
+            className="h-11 rounded-2xl border-[#C0A062]/20 bg-white/5 text-slate-900 dark:text-[#EDEDED]"
+            onKeyDown={(e) => e.key === 'Enter' && addSubject()}
+          />
+          <Button onClick={addSubject} className="h-11 rounded-2xl bg-[#C0A062] text-slate-100 dark:text-[#16120B] hover:bg-[#D4B370]">
+            Add
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {subjects.map((sub, index) => (
+            <div key={index} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3 text-sm">
+              <span className="font-medium text-slate-800 dark:text-[#E7DFC9]">{sub}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteSubject(sub)}
+                className="h-8 text-rose-400 hover:bg-rose-400/10 hover:text-rose-300"
+              >
+                Delete ❌
+              </Button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-xs font-medium leading-5 text-[#C0A062]">
+          ⚡ Subjects can be modified anytime by the teacher. Changes reflect instantly in timetable and tracking.
+        </p>
+      </div>
+
       <Section eyebrow="Schedule" title="Timetable & Tracking" description="View daily lectures, mark completion, and track syllabus coverage per subject." />
 
       {/* Coverage Summary Strip */}
@@ -551,9 +602,9 @@ function TimetablePage({
         {coverage.map(({ subject, pct, done, total }) => (
           <div key={subject} className="rounded-[22px] border border-[#C0A062]/12 bg-white/[0.03] p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-[#8F856F] truncate">{shortSubject(subject)}</p>
-            <p className="mt-2 text-2xl font-bold" style={{ color: subjectColors[subject] }}>{pct}%</p>
+            <p className="mt-2 text-2xl font-bold" style={{ color: subjectColors[subject] || "#a78bfa" }}>{pct}%</p>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: subjectColors[subject] }} />
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: subjectColors[subject] || "#a78bfa" }} />
             </div>
             <p className="mt-1 text-xs text-slate-600 dark:text-[#A7A093]">{done}/{total} done</p>
           </div>

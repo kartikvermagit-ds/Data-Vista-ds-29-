@@ -86,6 +86,7 @@ export interface ClassSettings {
   marksThreshold: number;
   sendAlerts: boolean;
   weeklyDigest: boolean;
+  subjects: string[];
 }
 
 export interface DataVistaState {
@@ -109,6 +110,7 @@ const BASE_SETTINGS: ClassSettings = {
   marksThreshold: 55,
   sendAlerts: true,
   weeklyDigest: true,
+  subjects: ["Mathematics", "Science", "English", "Social Studies", "Computer"],
 };
 
 function normalizeSettings(settings?: Partial<ClassSettings>): ClassSettings {
