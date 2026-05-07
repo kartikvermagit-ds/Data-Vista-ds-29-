@@ -16,7 +16,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { DevelopersFooter } from "./components/DevelopersFooter";
 
 
-type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "timetable" | "compare" | "calculator" | "settings";
+type PageId = "dashboard" | "students" | "attendance" | "marks" | "assignments" | "predictions" | "insights" | "timetable" | "compare" | "calculator" | "contact" | "settings";
 type RiskFilter = "All" | "Low" | "Medium" | "High";
 
 type AddStudentForm = { name: string; guardianName: string; phone: string; email: string; marksAverage: string; attendanceRate: string; assignmentCompletion: string; participation: string };
@@ -35,6 +35,7 @@ const nav = [
   ["insights", "AI Insights", BrainCircuit],
   ["timetable", "Timetable", ClipboardList],
   ["calculator", "Calculator", Calculator],
+  ["contact", "Contact Us", Mail],
   ["settings", "Settings", Settings],
 ] as const;
 
@@ -293,6 +294,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
               ["timetable", "Timetable", ClipboardList],
               ...(isElevated ? [["compare", "Class Compare", Shield] as NavEntry] : []),
               ["calculator", "Calculator", Calculator],
+              ["contact", "Contact Us", Mail],
               ["settings", "Settings", Settings],
             ];
             return (
@@ -322,6 +324,7 @@ export default function App({ teacher, onLogout }: { teacher: Teacher; onLogout:
           {active === "timetable" ? <TimetablePage timetable={state.timetable ?? []} onUpdateSlot={(dayIdx, slotId, status) => setState((c) => ({ ...c, timetable: c.timetable.map((d, i) => i !== dayIdx ? d : { ...d, slots: d.slots.map((s) => s.id !== slotId ? s : { ...s, status, completedTopics: status === "done" ? Math.min(s.totalTopics, s.completedTopics + (s.status !== "done" ? 1 : 0)) : s.completedTopics }) }) }))} subjects={state.settings.subjects ?? SUBJECTS} onUpdateSubjects={(subs) => setState(c => ({...c, settings: {...c.settings, subjects: subs}}))} /> : null}
           {active === "compare" && isElevated ? <ComparePage myClass={state} role={role} schoolName={state.settings.schoolName} /> : null}
           {active === "calculator" ? <CalculatorPage /> : null}
+          {active === "contact" ? <ContactPage /> : null}
           {active === "settings" ? <SettingsPage settingsDraft={settingsDraft} setSettingsDraft={setSettingsDraft} saveSettings={saveSettings} exportCsv={exportCsv} exportBackup={exportBackup} resetDemo={resetDemo} deleteAccount={deleteAccount} /> : null}
           <DevelopersFooter />
         </main>
@@ -1322,4 +1325,75 @@ function evaluateCalculatorExpression(expression: string) {
   const result = parseExpression();
   if (index !== source.length || !Number.isFinite(result)) throw new Error("Invalid calculation");
   return result;
+}
+
+function ContactPage() {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", query: "" });
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Query submitted successfully!");
+    setForm({ name: "", email: "", phone: "", query: "" });
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl py-8">
+      <div className="text-center mb-10">
+        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-[#F5E8C8] drop-shadow-sm">Submit your query</h1>
+        <p className="mt-4 text-sm text-slate-600 dark:text-[#A7A093]">Have questions or want to collaborate? Our team is here to help you navigate your journey.</p>
+      </div>
+      
+      <Card className="rounded-[32px] border-[#C0A062]/18 bg-white/80 dark:bg-[#0E0C0A] p-6 sm:p-10 shadow-[0_15px_40px_rgba(0,0,0,0.4)] backdrop-blur-md">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900 dark:text-[#E7DFC9]">Your Name</label>
+            <Input 
+              value={form.name} 
+              onChange={(e) => setForm(c => ({...c, name: e.target.value}))} 
+              placeholder="Jane Smith" 
+              required
+              className="h-12 rounded-2xl border-[#2A241A] bg-white dark:bg-[#121212] px-4 text-slate-800 dark:text-[#EDEDED] placeholder:text-[#5F584C] focus-visible:ring-[#C0A062]/35"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900 dark:text-[#E7DFC9]">Email (optional)</label>
+            <Input 
+              type="email"
+              value={form.email} 
+              onChange={(e) => setForm(c => ({...c, email: e.target.value}))} 
+              placeholder="jane@example.com" 
+              className="h-12 rounded-2xl border-[#2A241A] bg-white dark:bg-[#121212] px-4 text-slate-800 dark:text-[#EDEDED] placeholder:text-[#5F584C] focus-visible:ring-[#C0A062]/35"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900 dark:text-[#E7DFC9]">Phone Number</label>
+            <Input 
+              value={form.phone} 
+              onChange={(e) => setForm(c => ({...c, phone: e.target.value}))} 
+              placeholder="+1 (555) 000-0000" 
+              required
+              className="h-12 rounded-2xl border-[#2A241A] bg-white dark:bg-[#121212] px-4 text-slate-800 dark:text-[#EDEDED] placeholder:text-[#5F584C] focus-visible:ring-[#C0A062]/35"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900 dark:text-[#E7DFC9]">Your Query</label>
+            <textarea 
+              value={form.query}
+              onChange={(e) => setForm(c => ({...c, query: e.target.value}))}
+              placeholder="Tell us about your experience or ask a question..."
+              required
+              className="min-h-[140px] w-full rounded-2xl border border-[#2A241A] bg-white dark:bg-[#121212] px-4 py-3 text-slate-800 dark:text-[#EDEDED] placeholder:text-[#5F584C] outline-none focus-visible:ring-2 focus-visible:ring-[#C0A062]/35"
+            />
+          </div>
+          
+          <Button type="submit" className="mt-6 w-full h-12 rounded-2xl bg-white text-slate-900 hover:bg-slate-200 dark:bg-white dark:text-[#16120B] dark:hover:bg-[#E7DFC9] font-bold tracking-wide">
+            Submit Query
+          </Button>
+        </form>
+      </Card>
+    </div>
+  );
 }
