@@ -5,7 +5,7 @@ This project is configured with Capacitor so the existing Vite/React app can be 
 ## Requirements
 
 - Android Studio
-- Java/JDK from Android Studio or a standalone JDK
+- Java/JDK from Android Studio or a standalone JDK ok
 - `JAVA_HOME` set and `java` available in PATH
 
 ## Environment
